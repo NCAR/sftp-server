@@ -1,0 +1,9 @@
+**/.DS_Store
+**/.#*
+**/#*#
+**/*~
+**/*.swp
+**/.bash_history
+**/.idea
+dev/.env
+dev/log

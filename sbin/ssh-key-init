@@ -1,0 +1,230 @@
+#!/bin/sh
+PROG=ssh-key-init
+DESC="Set up ssh key files for a container"
+USAGE1="$PROG -c|--client=name [-a|--auth-keys=auth_keys_file] keydir"
+USAGE2="$PROG -s|--server [-k|--known-host-keys=known_host_keys] keydir"
+USAGE3="$PROG -h|--help"
+USAGE="Usage:
+    $USAGE1
+    $USAGE2
+    $USAGE3"
+KEYTYPES="rsa ecdsa ed25519"
+HELP_TEXT="
+        This script is generally run as a command passed to \"docker run\".
+        It is used to set up ssh keypairs in a directory for use by server-
+        and client-side containers, when neither of the containers runs
+        as root. It is generally run from a container to ensure the ownership
+        of the keys is consistent with the container user.
+
+        The \"keydir\" argument is the directory into which the keypairs will
+        be written. The directory and any missing intermediate directories
+        will be created as necessary.
+
+        The script generates keypairs for each of the following types:
+
+            $KEYTYPES
+
+        The following flags are supported:
+
+        -c|--client=name
+            Create user keypairs; each keypair has a name of the form
+            \"<name>-id_<type>\", where <name> is the given name and <type> is
+            one of the supported keytypes. By convention, <name> should be a
+            username.
+
+        -a|--auth-keys=auth_keys_files
+            When used with -c|--client, build an \"authorized_keys\" file with
+            the given name using the generated public keys. The directory must
+            exist.
+
+        -s|--server
+            Create host keypairs; each keypair has a name of the form
+            \"ssh_host_<type>_key\", where <type> is one of the supported
+            keytypes.
+
+        -k|--known-host-keys=known_host_keys
+            When used with -s|--server, build a \"known_host_keys\" file with
+            the given name using the generated public keys. The directory must
+            exist. This can be converted to a \"known_hosts\" file by inserting
+            IP addresses/hostnames.
+
+        -h|--help
+             Disply help text and quit.
+"
+SCRIPTDIR=`cd \`dirname $0\`; pwd`
+
+SSH_KEYGEN=${SSH_KEYGEN:-ssh-keygen}
+
+MODE=
+CLIENT_NAME=
+AUTH_KEYS=
+KNOWN_HOST_KEYS=
+KEY_DIR=
+
+main () {
+    processCommandLine "$@" || return 1
+
+    if [ ! -d ${KEY_DIR} ] ; then
+        mkdir -p ${KEY_DIR} || return 1
+    fi
+
+    case $MODE in
+        client)
+            setupClient || return $? ;;
+
+        server)
+            setupServer || return $? ;;
+    esac
+
+    return 0
+}
+
+setupClient () {
+    if [ ":${AUTH_KEYS}" != ":" ] ; then
+        :> ${AUTH_KEYS}.new || return 1
+    fi
+    for keytype in ${KEYTYPES} ; do
+        name="${KEY_DIR}/${CLIENT_NAME}-id_${keytype}"
+        ${SSH_KEYGEN} -q  -N '' -t ${keytype} -f "${name}" || return 1
+        if [ ":${AUTH_KEYS}" != ":" ] ; then
+            cat "${name}.pub" >>${AUTH_KEYS}.new || return 1
+        fi
+    done
+    if [ ":${AUTH_KEYS}" != ":" ] ; then
+        chmod 644 ${AUTH_KEYS}.new
+        mv ${AUTH_KEYS}.new ${AUTH_KEYS} || return 1
+    fi
+}
+
+setupServer () {
+    if [ ":${KNOWN_HOST_KEYS}" != ":" ] ; then
+        :> ${KNOWN_HOST_KEYS}.new || return 1
+    fi
+    for keytype in ${KEYTYPES} ; do
+        name="${KEY_DIR}/ssh_host_${keytype}_key"
+        ${SSH_KEYGEN} -q -N '' -t ${keytype} -f "${name}" || return 1
+        if [ ":${KNOWN_HOST_KEYS}" != ":" ] ; then
+            cat "${name}.pub" >>${KNOWN_HOST_KEYS}.new || return 1
+        fi
+    done
+    if [ ":${KNOWN_HOST_KEYS}" != ":" ] ; then
+        chmod 644 ${KNOWN_HOST_KEYS}.new
+        mv ${KNOWN_HOST_KEYS}.new ${KNOWN_HOST_KEYS} || return 1
+    fi
+}
+
+processCommandLine () {
+    MODE=
+    CLIENT_NAME=
+    while [ $# != 0 ] ; do
+        arg="$1"
+        shift
+        case $arg in
+            -h|--help)
+                cat <<EOF
+NAME            
+        $PROG - $DESC
+
+SYNOPSIS
+        $USAGE1
+        $USAGE2
+        $USAGE3
+
+DESCRIPTION$HELP_TEXT
+EOF
+                return 1 ;;
+
+            -sn?*)
+                opt=`expr "${arg}" : '\(-.\).*'`
+                rest=`expr "${arg}" : '-.\(.*\)'`
+                set : ${opt} -${rest} "$@"
+                shift ;;
+
+            -[cak]?*)
+                opt=`expr "${arg}" : '\(-.\).*'`
+                rest=`expr "${arg}" : '-.\(.*\)'`
+                set : ${opt} "${rest}" "$@"
+                shift ;;
+
+            --*=*)
+                opt=`expr "${arg}" : '\(--[^=]*\)=.*'`
+                rest=`expr "${arg}" : '--[^=]*=\(.*\)'`
+                set : ${opt} "${rest}" "$@"
+                shift ;;
+
+            --client=*)
+                rest=`expr "${arg}" : '--client=\(.*\)'`
+                set : --client "${rest}"
+                shift ;;
+            
+            -c|--client)
+                if [ ":$MODE" = ":server" ] ; then
+                    MODE=bad
+                else
+                    MODE=client
+                fi
+                CLIENT_NAME="$1"
+                shift ;;
+            
+            -a|--auth-keys)
+                AUTH_KEYS="$1"
+                shift ;;
+            
+            -s|--server)
+                if [ ":$MODE" = ":client" ] ; then
+                    MODE=bad
+                else
+                    MODE=server
+                fi ;;
+            
+            -k|--known-host-keys)
+                KNOWN_HOST_KEYS="$1"
+                shift ;;
+
+            -*)
+                echo "$PROG: invalid option: $arg" >&2
+                echo "$USAGE" >&2
+                return 1 ;;
+            
+            *)
+                KEY_DIR="${arg}"
+                break ;;
+        esac
+    done
+
+    if [ ":${MODE}" = ":" ] ; then
+        echo "$PROG: one of -c|--client or -s|--server is required" >&2
+        echo "$USAGE" >&2
+        return 1
+    fi
+    if [ "${MODE}" = "bad" ] ; then
+        echo "$PROG: only one of -c|--client or -s|--server is allowed" >&2
+        echo "$USAGE" >&2
+        return 1
+    fi
+    if [ ":${AUTH_KEYS}" != ":" ] ; then
+        if [ $MODE != client ] ; then
+            echo "$PROG: -a|--auth-keys requires -c|--client" >&2
+            echo "$USAGE" >&2
+            return 1
+        fi
+    fi
+    if [ ":${KNOWN_HOST_KEYS}" != ":" ] ; then
+        if [ $MODE != server ] ; then
+            echo "$PROG: -k|--known-hosts requires -s|--server" >&2
+            echo "$USAGE" >&2
+            return 1
+        fi
+    fi
+
+    if [ ":${KEY_DIR}" = ":" ] ; then
+        echo "$PROG: key_dir argument is required" >&2
+        echo "$USAGE" >&2
+        return 1
+    fi
+
+    return 0
+
+}
+
+main "$@"

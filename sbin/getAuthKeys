@@ -1,0 +1,39 @@
+#!/bin/sh
+PROG=getAuthKeys
+DESC="An AuthorizedKeysCommand script"
+USAGE1="$PROG user"
+USAGE2="$PROG -h|--help"
+HELP_TEXT="
+        AuthorizedKeysCommand programs are used by sshd to retrieve authorized
+        keys for a given user.
+
+        This script just returns all public user keys, since sftp-server
+        always runs as \$SFTPUSER. Public user keys are assumed to have names
+        of the form \"<user>-id_<type>.pub\".
+"
+ENV_HELP="
+        SECRETS_DIR
+            The name of the secrets directory, which contains the ssh keys at               runtime.
+"
+case $1 in
+    -h|--help)
+        cat <<EOF
+NAME
+        $PROG - $DESC
+
+SYNOPSIS
+        $USAGE1
+        $USAGE2
+
+DESCRIPTION$HELP_TEXT
+EOF
+        exit 0 ;;
+esac
+
+if [ ":${SECRETS_DIR}" = ":" ] ; then
+    echo "$PROG: SECRETS_DIR variable is not set" >&2
+    exit 1
+fi
+cat ${SECRETS_DIR}/*-id_*.pub 2>/dev/null
+
+

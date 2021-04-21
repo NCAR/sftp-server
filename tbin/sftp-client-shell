@@ -1,0 +1,55 @@
+#!/bin/bash
+PROG=sftp-client-shell
+DESC="Script for testing sftp-server"
+USAGE1="$PROG [-h|--help]"
+HELP_TEXT="
+        This script is meant to be run as the main command in a client test
+        container for the \"sftp-server\" package. The container should use
+        the \"sftp-server\" image, but it should run as a user other than
+        \$SFTPUSER, and it should use the \"sftp-cl-entrypoint.rc\"
+        ENTRYPOINT rc file.
+
+        If the INTERACTIVE environment variable has a \"truthy\" value, this
+        script will enter an infinite sleep loop with the expectation that
+        someone will \"docker exec\" into the container. Otherwise, the
+        script will run all test scripts and then exit.
+"
+SCRIPTDIR=`cd \`dirname $0\`; pwd`
+
+case $1 in
+    -h|--help)
+        cat <<EOF
+NAME
+        $PROG - $DESC
+
+SYNOPSIS
+        $USAGE1
+
+DESCRIPTION$HELP_TEXT
+EOF
+        exit 0 ;;
+esac
+SERVER="server:22"
+
+echo "Waiting for \"${SERVER}\"..."
+check-server --wait=60 ${SERVER}
+rc=$?
+if [ $rc = 0 ] ; then
+    echo "\"${SERVER}\" is ready" >&2
+elif [ $rc = 1 ] ; then
+    echo "\"${SERVER}\" timed out" >&2
+    exit 1
+else
+    exit 1
+fi
+
+if truthy "${INTERACTIVE}" ; then
+    echo "Waiting indefinitely..." >&2
+    while true ; do
+        sleep 60 ;
+    done
+    exit 0
+fi
+cd $SCRIPTDIR || exit
+runtests
+

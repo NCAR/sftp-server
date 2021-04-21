@@ -1,0 +1,60 @@
+#!/bin/sh
+PROG=make-ssh-key-parms
+DESC="Define convenient parmdb parameters for SSH keys"
+USAGE1="$PROG [-h|--help]"
+USAGE="Usage:
+    $USAGE1
+    $USAGE2
+    $USAGE3"
+HELP_TEXT="
+        This script looks in \$SECRETS_DIR for filenames of the form
+
+          <username>-id_<type>.pub
+ 
+        where <username> is the login name of the current user, and <type>
+        is a SSH key type; for each such file, the script creates a parmdb
+        parameter of the form
+
+          ID_<TYPE>
+
+        where <TYPE> is <type> in upper-case; the value of the parameter is
+        the path of the private key counterpart of the original .pub file.
+"
+
+case $1 in
+    -h|--help)
+        cat <<EOF
+NAME
+        $PROG - $DESC
+
+SYNOPSIS
+        $USAGE1
+        $USAGE2
+
+DESCRIPTION$HELP_TEXT
+EOF
+        exit 0 ;;
+esac
+
+if [ ":${PARM_DB}" = ":" ] || [ ! -d "${PARM_DB}" ] ; then
+    exit 1
+fi
+
+SCRIPTDIR=`cd \`dirname $0\`; pwd`
+t=`type parmdb 2>/dev/null`
+if [ $? != 0 ] ; then
+   SWEETDIR=`cd ${SCRIPTDIR}/../../sweet ; pwd`
+   if [ -f "${SWEETDIR}/bin/parmdb" ] ; then
+       PATH="${SWEETDIR}/bin:${SWEETDIR}/sbin:${PATH}" export PATH
+   fi
+fi
+execuser=`id -nu`
+ls -1 ${SECRETS_DIR}/${execuser}-id_*.pub | while read pubfile ; do
+    if [ ":${pubfile}" = ":${SECRETS_DIR}/${execuser}-id_*.pub" ] ; then
+        exit 1
+    fi
+    idfile=`basename ${pubfile} .pub`
+    typeUC=`expr "${idfile}" : '.*-id_\(.*\)' | tr '[a-z]' '[A-Z]'`
+    parmdb set -c '${idfile} ssh identity file' "ID_${typeUC}" "${SECRETS_DIR}/${idfile}"
+done
+

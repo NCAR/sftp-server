@@ -1,0 +1,51 @@
+version: '3.6'
+
+services:
+
+  server:
+    image: ncar/sftp-server:latest
+    init: true
+    volumes:
+      - type: volume
+        source: testdata
+        target: /var/data
+      - type: volume
+        source: testkeyspool
+        target: /var/spool/authkeys
+      - type: tmpfs
+        target: /tmp
+    environment:
+      RUN_ENV: test
+      ENTRYPOINT_DEBUG: 0
+    networks:
+      - sftp
+
+  client:
+    image: ncar/sftp-server:latest
+    user: 98:98
+    entrypoint: [ "/usr/local/sweet/sbin/sweet-entrypoint.sh", "--source=/usr/local/sftp-server/sbin/sftp-client-entrypoint.rc" ]
+    command: [ "/usr/local/sftp-server/tbin/sftp-client-shell" ]
+    volumes:
+      - type: volume
+        source: testdata
+        target: /var/data
+      - type: volume
+        source: testkeyspool
+        target: /var/spool/authkeys
+      - type: tmpfs
+        target: /tmp
+    environment:
+      SFTP_SERVER: server
+      RUN_ENV: test
+      INTERACTIVE: "no"
+      ENTRYPOINT_DEBUG: 0
+    networks:
+      - sftp
+
+volumes:
+  testdata:
+  testkeyspool:
+  
+networks:
+  sftp:
+

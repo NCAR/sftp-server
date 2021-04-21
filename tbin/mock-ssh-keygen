@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# Mock ssh-keygen for testing
+#
+PROG=mock-ssh-keygen
+while [ $# != 0 ] ; do
+    case $1 in
+        -q) shift ;;
+        -N) shift ; shift ;;
+        -t) TYPE=$2 ; shift ; shift ;;
+        -f) NAME=$2 ; shift ; shift ;;
+        *)  echo "$PROG: unsupported argument: $1" >&2
+            exit 1 ;;
+    esac
+done
+echo ${TYPE} >${NAME} || exit 1
+chmod 600 ${NAME} || exit 1
+echo ${TYPE} >${NAME}.pub || exit 1
+chmod 644 ${NAME}.pub || exit 1
+exit 0
+

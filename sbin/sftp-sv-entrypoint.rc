@@ -1,0 +1,15 @@
+:
+#
+# Server container ENTRYPOINT rc script.
+#
+ls -la ${DATA_DIR}
+ls -la ${SECRETS_DIR}
+df
+
+#
+# Keys should have been injected into $SECRETS_DIR.
+#
+wait-for-files -v --wait=0 "${SECRETS_DIR}/ssh_host_*_key" || exit 1
+
+
+

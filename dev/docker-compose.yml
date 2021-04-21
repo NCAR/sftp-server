@@ -1,0 +1,95 @@
+version: '3.6'
+
+services:
+
+  server:
+    image: ncar/sftp-server:latest
+    init: true
+    volumes:
+      - type: bind
+        source: ${LOCAL_BASE}/sftp-server
+        target: /usr/local/sftp-server
+      - type: bind
+        source: ${LOCAL_BASE}/sweet
+        target: /usr/local/sweet
+      - type: volume
+        source: testdata
+        target: ${DATA_DIR}
+      - type: bind
+        read_only: "true"
+        source: ${LOCAL_SECRETS}
+        target: ${SECRETS_VOL}
+      - type: tmpfs
+        target: /tmp
+    environment:
+      SERVICE: server
+      RUN_ENV: dev
+      ENTRYPOINT_DEBUG:
+    networks:
+      - sftp
+
+  client:
+    image: ncar/sftp-server:latest
+    user: ${SWEETUSER}:${SFTPGROUP}
+    entrypoint: [ "/usr/local/sweet/sbin/sweet-entrypoint.sh", "--source=/usr/local/sftp-server/sbin/sftp-cl-entrypoint.rc" ]
+    command: [ "/usr/local/sftp-server/tbin/sftp-client-shell" ]
+    volumes:
+      - type: bind
+        source: ${LOCAL_BASE}/sftp-server
+        target: /usr/local/sftp-server
+      - type: bind
+        source: ${LOCAL_BASE}/sweet
+        target: /usr/local/sweet
+      - type: volume
+        source: testdata
+        target: ${DATA_DIR}
+      - type: bind
+        read_only: "true"
+        source: ${LOCAL_SECRETS}
+        target: ${SECRETS_VOL}
+      - type: tmpfs
+        target: /tmp
+    environment:
+      SERVICE: client
+      RUN_ENV: dev
+      SFTP_SERVICE: server
+      INTERACTIVE: 1
+      ENTRYPOINT_DEBUG: 1
+    networks:
+      - sftp
+
+  reset-server-keys:
+    image: ncar/sftp-server:latest
+    entrypoint: [ "/usr/local/sweet/sbin/sweet-entrypoint.sh" ]
+    command: [ "/usr/local/sftp-server/sbin/ssh-keysync" ]
+    volumes:
+      - type: bind
+        source: ${LOCAL_SECRETS}
+        target: ${DATA_DIR}
+    environment:
+      SERVICE: server
+      RUN_ENV: dev
+      ENTRYPOINT_DEBUG:
+    profiles: [ "reset-keys" ]
+
+  reset-client-keys:
+    image: ncar/sftp-server:latest
+    user: ${SWEETUSER}:${SWEETGROUP}
+    entrypoint: [ "/usr/local/sweet/sbin/sweet-entrypoint.sh" ]
+    command: [ "/usr/local/sftp-server/sbin/ssh-keysync" ]
+    volumes:
+      - type: bind
+        source: ${LOCAL_SECRETS}
+        target: ${DATA_DIR}
+    environment:
+      SERVICE: client
+      RUN_ENV: dev
+      ENTRYPOINT_DEBUG:
+    profiles: [ "reset-keys" ]
+
+volumes:
+  testdata:
+  
+networks:
+  sftp:
+

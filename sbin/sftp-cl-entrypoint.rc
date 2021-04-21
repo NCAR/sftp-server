@@ -1,0 +1,29 @@
+:
+#
+# Client container ENTRYPOINT rc script.
+#
+ls -la ${DATA_DIR}
+ls -la ${SECRETS_DIR}
+df
+
+#
+# Keys should have been injected into $SECRETS_DIR.
+#
+wait-for-files -v --wait=0 "${SECRETS_DIR}/*-id_*.pub" || exit 1
+
+if [ ! -f ${SECRETS_DIR}/known_hosts ] ; then
+    if [ -f ${SECRETS_DIR}/known_host_keys ] && [ ":${SFTP_SERVICE}" != ":" ]
+    then
+        ip=`dig ${SFTP_SERVICE} +short`
+        sed "s/^/${SFTP_SERVICE},${ip} /" ${SECRETS_DIR}/known_host_keys \
+          > ${SECRETS_DIR}/known_hosts
+    fi
+fi 
+if [ ! -f ${HOME}/.ssh/known_hosts ] ; then
+    mkdir -p ${HOME}/.ssh
+    ln -s ${SECRETS_DIR}/known_hosts ${HOME}/.ssh/known_hosts
+fi
+
+make-ssh-key-parms
+eval `parmdb list --verbose | grep -v '^#'`
+export `parmdb list`
