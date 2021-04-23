@@ -3,18 +3,18 @@ PROG=sftp-client-shell
 DESC="Script for testing sftp-server"
 USAGE1="$PROG [-h|--help]"
 HELP_TEXT="
-        This script is meant to be run as the main command in a client test
-        container for the \"sftp-server\" package. The container should use
-        the \"sftp-server\" image, but it should run as a user other than
-        \$SFTPUSER, and it should use the \"sftp-cl-entrypoint.rc\"
-        ENTRYPOINT rc file.
+        This script is meant to be run as the main command in a container
+        that tests connectivity to a \"sftp-server\" container.
+ 
+        The container must source \"sftp-cl-entrypoint.rc\" as part of its
+        ENTRYPOINT, and the SFTP_SERVER environment variable must be set to
+        the name of the sftp server host/container.
 
         If the INTERACTIVE environment variable has a \"truthy\" value, this
         script will enter an infinite sleep loop with the expectation that
         someone will \"docker exec\" into the container. Otherwise, the
-        script will run all test scripts and then exit.
+        script will run all test scripts in ${PACKAGE_DIR}/tbin then exit.
 "
-SCRIPTDIR=`cd \`dirname $0\`; pwd`
 
 case $1 in
     -h|--help)
@@ -29,7 +29,11 @@ DESCRIPTION$HELP_TEXT
 EOF
         exit 0 ;;
 esac
-SERVER="server:22"
+if [ ":${SFTP_SERVER}" = ":" ] ; then
+    echo "$PROG: SFTP_SERVER environment variable is not set" >&2
+    exit 1
+fi
+SERVER="${SFTP_SERVER}:22"
 
 echo "Waiting for \"${SERVER}\"..."
 check-server --wait=60 ${SERVER}
@@ -50,6 +54,9 @@ if truthy "${INTERACTIVE}" ; then
     done
     exit 0
 fi
-cd $SCRIPTDIR || exit
+cd ${PACKAGE_DIR}/tbin || exit
 runtests
+rc=$?
+ssh -i $ID_RSA sftp@server shutdown
 
+exit $rc

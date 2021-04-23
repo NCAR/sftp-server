@@ -1,7 +1,7 @@
 # SFTP server
 
 This project implements a simple SFTP server container. The container runs
-as non-root user "sftpuser".
+as non-root user "sftp".
 
 All scripts support the "--help" command-line flag for displaying help.
 

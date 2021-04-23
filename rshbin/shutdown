@@ -1,0 +1,13 @@
+#!/bin/bash
+if [[ "$1" = "--help" ]] ; then
+    exit 0
+fi
+read sshd_pid </tmp/sshd.pid
+if [[ ":${sshd_pid}" != ":" && -d /proc/${sshd_pid} ]] ; then
+   kill ${sshd_pid}
+   sleep 2
+   if [[ -d /proc/${sshd_pid} ]] ; then
+      kill ${sshd_pid}
+   fi
+fi
+

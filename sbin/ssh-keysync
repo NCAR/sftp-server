@@ -4,11 +4,11 @@ DESC="Generate SSH keys for client/server containers"
 USAGE1="$PROG [-h|--help]"
 USAGE="Usage:
     $USAGE1"
-SERVER_USERS="sftpuser sshd"
+SERVER_USERS="sftp sshd"
 HELP_TEXT="
         This script will generate SSH keypairs for either the server or client
         side. The script assumes that if the executing user is
-        \"sftpuser\" or \"sshd\", it should (re)generate the host keys, but if
+        \"sftp\" or \"sshd\", it should (re)generate the host keys, but if
         it is anything else, it should (re)generate the client keys. Keypairs
         will be written to
 

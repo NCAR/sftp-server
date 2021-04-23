@@ -12,10 +12,10 @@ df
 wait-for-files -v --wait=0 "${SECRETS_DIR}/*-id_*.pub" || exit 1
 
 if [ ! -f ${SECRETS_DIR}/known_hosts ] ; then
-    if [ -f ${SECRETS_DIR}/known_host_keys ] && [ ":${SFTP_SERVICE}" != ":" ]
+    if [ -f ${SECRETS_DIR}/known_host_keys ] && [ ":${SFTP_SERVER}" != ":" ]
     then
-        ip=`dig ${SFTP_SERVICE} +short`
-        sed "s/^/${SFTP_SERVICE},${ip} /" ${SECRETS_DIR}/known_host_keys \
+        ip=`dig ${SFTP_SERVER} +short`
+        sed "s/^/${SFTP_SERVER},${ip} /" ${SECRETS_DIR}/known_host_keys \
           > ${SECRETS_DIR}/known_hosts
     fi
 fi 

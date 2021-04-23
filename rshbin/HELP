@@ -1,0 +1,9 @@
+#!/bin/sh
+if [ ":$1" = ":--help" ] ; then
+    exit 0
+fi
+/bin/cat <<EOF
+You are in a restricted shell. The only commands you can execute are "ls",
+"printenv", and "shutdown". The "shutdown" command is a script that will
+kill the sshd server.
+EOF

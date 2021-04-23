@@ -9,16 +9,17 @@ RUN apt-get -y update && \
 ARG PACKAGE=sftp-server
 ARG IMAGE=ncar/sftp-server
 ARG IMAGE_VERSION=snapshot
-ARG BRANCH=master
+ARG BRANCH=main
 ARG PACKAGE_DIR=/usr/local/sftp-server
 ARG LOG_LEVEL=DEBUG3
+ARG SFTP_SERVER_OPTS=-R
 
 #
 # The sshd/sftp server runs as $SFTPUSER:nogroup.
 #
-ARG SFTPUSER=sftpuser
+ARG SFTPUSER=sftp
 ARG SFTPUSERID=901
-ARG SFTPGROUP=sftpuser
+ARG SFTPGROUP=sftp
 ARG SFTPGROUPID=901
 
 ENV SFTPUSER=${SFTPUSER} \
@@ -39,6 +40,7 @@ ENV SFTPUSER=${SFTPUSER} \
 
 COPY sbin ${PACKAGE_DIR}/sbin/
 COPY tbin ${PACKAGE_DIR}/tbin/
+COPY rshbin ${PACKAGE_DIR}/rshbin/
 RUN set -xe ; \
     make-local-links ${PACKAGE_DIR} /usr/local ; \
     rm -f /usr/local/sbin/sftp-server-wrapper ; \
@@ -51,9 +53,16 @@ RUN set -xe ; \
             --gid ${SFTPGROUPID} \
             --gecos "SFTP user" \
             --home /home/${SFTPUSER} \
-            --shell /bin/false \
+            --shell /bin/rbash \
             $SFTPUSER ; \
     usermod -G ${SFTPGROUPID} ${SWEETUSER} ; \
+    ln -s /bin/ls \
+          /usr/bin/printenv \
+          ${PACKAGE_DIR}/rshbin/HELP \
+          ${PACKAGE_DIR}/rshbin/shutdown \
+                /home/${SFTPUSER} ; \
+    cp /usr/local/sftp-server/rshbin/bashrc /home/${SFTPUSER}/.bashrc ; \
+    rm -f /home/${SFTPUSER}/.bash_logout ; \
     mkdir -p /home/${SFTPUSER}/.ssh ; \
     chown ${SFTPUSER}:${SFTPGROUP} /home/${SFTPUSER}/.ssh ; \
     ln -s ${SECRETS_DIR}/known_hosts /home/${SFTPUSER}/.ssh ; \
@@ -72,7 +81,7 @@ RUN set -xe ; \
      -e "s:^[# ]*AllowAgentForwarding.*:AllowAgentForwarding no:" \
      -e "s:^[# ]*AllowTcpForwarding.*:AllowTcpForwarding no:" \
      -e "s:^[# ]*X11Forwarding.*:X11Forwarding no:" \
-     -e "s:^[# ]*Subsystem.*sftp.*:Subsystem   sftp internal-sftp -d ${DATA_DIR}:" \
+     -e "s:^[# ]*Subsystem.*sftp.*:Subsystem   sftp internal-sftp -d ${DATA_DIR} ${SFTP_SERVER_OPTS}:" \
      -e "s:^[# ]*PidFile.*:PidFile /tmp/sshd.pid:" \
       /etc/ssh/sshd_config >/etc/ssh/sshd_config.new ; \
     mv /etc/ssh/sshd_config.new /etc/ssh/sshd_config ; \
