@@ -65,7 +65,7 @@ then
 else
     FAILURE
 fi
-parmdb list --verbose 
+#parmdb list --verbose 
 
 . cleanup.rc ; exit 0
 

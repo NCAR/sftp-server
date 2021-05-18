@@ -1,0 +1,41 @@
+# This is a sample file to help you set up your own .env file for a
+# docker-compose configuration (esp. a development configuration).
+
+#
+# The following three parameters should identify local directories (i.e.
+# directories on your execution host). LOCAL_BASE should identify the
+# directory where your github repos are cloned. LOCAL_SECRETS should identify
+# where secrets are stored. LOCAL_LOG should identify where you want to
+# write operational logs for containers.
+#
+LOCAL_BASE=
+LOCAL_SECRETS=
+LOCAL_LOG=
+
+INTERACTIVE=yes
+
+#
+# Container variables defined SWEET Dockerfile ENV commands. Make the values
+# here mirror SWEET's values.
+#
+CONFIG_DIR=/tmp/etc
+CONFIG_VOL=/run/etc
+DATA_DIR=/var/data
+LOGS_DIR=/var/logs
+SECRETS_DIR=/tmp/private/secrets
+SECRETS_VOL=/run/secrets
+SWEETUSER=sweetuser
+SWEETUSERID=900
+SWEETGROUP=sweetuser
+SWEETGROUPID=900
+
+SFTPUSER=sftp
+SFTPUSERID=901
+SFTPGROUP=sftp
+SFTPGROUPID=901
+
+
+
+
+
+

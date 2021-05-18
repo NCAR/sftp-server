@@ -43,8 +43,6 @@ COPY tbin ${PACKAGE_DIR}/tbin/
 COPY rshbin ${PACKAGE_DIR}/rshbin/
 RUN set -xe ; \
     make-local-links ${PACKAGE_DIR} /usr/local ; \
-    rm -f /usr/local/sbin/sftp-server-wrapper ; \
-    cp /usr/local/sftp-server/sbin/sftp-server-wrapper /usr/local/sbin/sftp-server-wrapper ; \
     sweet-build-init $SFTPUSERID ; \
     echo "/bin/false" >> /etc/shells ; \
     addgroup --gid ${SFTPGROUPID} ${SFTPGROUP} ; \
@@ -90,8 +88,6 @@ RUN set -xe ; \
          /etc/rsyslog.conf >/etc/rsyslog.conf.new ; \
     mv /etc/rsyslog.conf.new /etc/rsyslog.conf
 
-#     -e "s:^[# ]*Subsystem.*sftp.*:Subsystem   sftp /usr/local/sbin/sftp-server-wrapper:" \
-#    echo "SetEnv USER=${SFTPUSER} HOME=${DATA_DIR}" >>/etc/ssh/sshd_config.new ;\
 
 USER $SFTPUSER
 

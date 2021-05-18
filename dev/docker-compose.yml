@@ -54,7 +54,7 @@ services:
       RUN_ENV: dev
       SFTP_SERVER: server
       INTERACTIVE: ${INTERACTIVE}
-      ENTRYPOINT_DEBUG: 1
+      ENTRYPOINT_DEBUG: 0
     networks:
       - sftp
 
