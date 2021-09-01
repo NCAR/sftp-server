@@ -16,7 +16,7 @@ jobs:
       - run:
           name: "Build container and run environment"
           command: |
-              git clone https://${GH_TOKEN}@github.com/sweet.git $HOME/sweet
+              git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git $HOME/sweet
               $HOME/sweet/docker-build
               mkdir $HOME/secrets
               chmod 1777 $HOME/secrets
