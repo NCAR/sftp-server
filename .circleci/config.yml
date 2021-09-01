@@ -21,14 +21,16 @@ jobs:
               $HOME/sweet/docker-build
               mkdir $HOME/secrets
               chmod 1777 $HOME/secrets
+              echo "HOME=$HOME:"
               ls -l $HOME
-              docker images
 
       - run:
           name: "Create SSH key pairs"
           command: |
               cd test
-              docker-compose --env-file ./circleci.env run reset-client-keys
+              echo test:
+              ls -l
+              docker-compose --verbose --env-file ./circleci.env run reset-client-keys
               docker-compose --env-file ./circleci.env run reset-server-keys
               ls -lR $HOME/secrets
               
