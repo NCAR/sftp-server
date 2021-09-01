@@ -1,0 +1,86 @@
+---
+defaults: &defaults
+  docker:
+    - image: circleci/golang:buster
+
+version: 2
+jobs:
+  test:
+    <<: *defaults
+
+    steps:
+      - checkout
+
+      - setup_remote_docker
+
+      - run:
+          name: "Run tests outside container"
+          command: |
+              cd tbin
+              ../sbin/runtests
+              
+      - run:
+          name: "Build Container"
+          command: |
+              ./docker-build
+
+      - run:
+          name: "Run tests inside container"
+          command: |
+              cd test
+              docker-compose up
+
+  push:
+    <<: *defaults
+
+    steps:
+      - checkout
+
+      - setup_remote_docker
+
+      - run:
+          name: "Build and Tag Container"
+          command: |
+              ./docker-build --version=$CIRCLE_TAG
+
+      - run:
+          name: "Run tests inside container"
+          command: |
+              cd test
+              docker-compose up
+
+      - run:
+          name: "Push Container"
+          command: |
+              printenv | sed -n -e 's/DOCKERHUB_PASSWORD=\(.*\)/\1/p' | docker login --username $DOCKERHUB_USERNAME --password-stdin
+              docker push ncar/sweet
+
+      - run:
+          name: "Generate documentation"
+          command: |
+              set +e
+              git config --global user.email "${GH_USER_EMAIL}"
+              git config --global user.name "${GH_USER_NAME}"
+              REPO=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+              export REPO
+              git clone https://${GH_TOKEN}@github.com/$REPO.wiki.git /tmp/wiki
+              cd dev
+              docker-compose run gendoc
+              cd /tmp/wiki
+              git add .
+              if git commit -m 'Latest doc build' ; then
+                  git push
+              fi
+
+workflows:
+  version: 2
+  test-push:
+    jobs:
+      - test
+      - push:
+          context: sweg
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+([-+].*)?$/
+            branches:
+              ignore: /.*/

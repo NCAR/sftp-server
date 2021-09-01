@@ -1,0 +1,31 @@
+---
+defaults: &defaults
+  docker:
+    - image: circleci/golang:buster
+
+version: 2
+jobs:
+  test:
+    <<: *defaults
+
+    steps:
+      - checkout
+
+      - setup_remote_docker
+
+      - run:
+          name: "Run tests outside container"
+          command: |
+              echo "HOME=$HOME"
+              echo "$HOME:"
+              ls -l $HOME
+              echo "wd=`pwd`"
+              echo "wd:"
+              ls -l
+              
+workflows:
+  version: 2
+  test-push:
+    jobs:
+      - test:
+          context: sweg

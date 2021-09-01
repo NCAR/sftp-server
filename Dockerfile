@@ -1,6 +1,6 @@
 FROM ncar/sweet
 
-RUN apt-get -y update && \
+RUN apt-get -y --allow-releaseinfo-change update && \
     apt-get -y install \
       dnsutils \
       openssh-server \
