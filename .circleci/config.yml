@@ -14,14 +14,20 @@ jobs:
       - setup_remote_docker
 
       - run:
-          name: "Run tests outside container"
+          name: "Build container and run environment"
           command: |
-              echo "HOME=$HOME"
-              echo "$HOME:"
-              ls -l $HOME
-              echo "wd=`pwd`"
-              echo "wd:"
-              ls -l
+              git clone https://${GH_TOKEN}@github.com/sweet.git $HOME/sweet
+              $HOME/sweet/docker-build
+              mkdir $HOME/secrets
+              chmod 1777 $HOME/secrets
+
+      - run:
+          name: "Create SSH key pairs"
+          command: |
+              cd test
+              docker-compose --env-file ./circleci.env run reset-client-keys
+              docker-compose --env-file ./circleci.env run reset-server-keys
+              ls -lR $HOME/secrets
               
 workflows:
   version: 2
