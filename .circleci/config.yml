@@ -16,10 +16,13 @@ jobs:
       - run:
           name: "Build container and run environment"
           command: |
+              set +e
               git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git $HOME/sweet
               $HOME/sweet/docker-build
               mkdir $HOME/secrets
               chmod 1777 $HOME/secrets
+              ls -l $HOME
+              docker images
 
       - run:
           name: "Create SSH key pairs"
