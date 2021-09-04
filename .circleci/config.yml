@@ -23,10 +23,13 @@ jobs:
       - run:
           name: "Run tests"
           command: |
+              set +e
               cd sbin
               ./run-test-server
+              docker ps
+              docker network ls
               ./run-test-client
-
+              exit 0
 
 
 workflows:
