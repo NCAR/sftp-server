@@ -17,7 +17,8 @@ HELP_TEXT="
         The SFTP container is always assigned a name. The name can be given
         on the command line, but if it is not, \"$DEFAULT_CONT\" is used.
         The container will run detached. Use \"docker logs <name>\"
-        to view logs. Use \"docker kill <name>\" to stop the server.
+        to view logs. Use \"cleanup-test-server <name>\" to stop and clean up
+        the server container and its network.
 
         A client container can access the generated keys if the
         \"--volumes-from <containername>\" argument is included in the
@@ -64,12 +65,7 @@ main () {
 
     echo "Starting container \"${SFTP_CONT}\""
     docker start ${SFTP_CONT}
-    rc=$?
-
-    ( docker wait ${SFTP_CONT} >/dev/null 2>&1 ; docker network rm ${SFTP_CONT}_net >/dev/null 2>&1 ) &
-    trap '' 1 2 13 15
-
-    return $rc
+    return $?
 }
 
 removeExistingContainer () {
@@ -86,7 +82,6 @@ createBridgeNetwork () {
 
     netinfo=`docker network inspect ${container}_net 2>/dev/null`
     if [ ":$netinfo" = ":[]" ] ; then
-        trap "docker network rm ${container}_net ; exit 255" 1 2 13 15
         echo "Creating network \"${container}_net\""
         docker network create ${container}_net
     fi
@@ -96,8 +91,7 @@ createStoppedSftpContainer () {
     container="$1"
 
     echo "Creating stopped container \"$container\""
-    trap "docker kill ${container} >/dev/null 2>&1 ; docker network rm ${container}_net >/dev/null 2>&1 ; exit 255" 1 2 13 15
-    docker create --rm --name ${container} \
+    docker create --name ${container} \
            --network ${container}_net \
            -v /run/secrets -v /mnt \
            --tmpfs /tmp:rw,noexec,nosuid \

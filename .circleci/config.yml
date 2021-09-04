@@ -25,10 +25,9 @@ jobs:
           command: |
               set +e
               cd sbin
-              ./run-test-server
-              docker ps
-              docker network ls
-              ./run-test-client
+              ./run-test-server || (./cleanup-test-server ; exit 1)
+              ./run-test-client || (./cleanup-test-server ; exit 1)
+              ./cleanup-test-server
               exit 0
 
 
