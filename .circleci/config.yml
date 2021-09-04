@@ -1,11 +1,11 @@
 ---
 defaults: &defaults
   docker:
-    - image: circleci/golang:buster
+    - image: docker:stable-git
 
 version: 2
 jobs:
-  test:
+  build:
     <<: *defaults
 
     steps:
@@ -14,26 +14,21 @@ jobs:
       - setup_remote_docker
 
       - run:
-          name: "Build container and run environment"
+          name: "Build container"
           command: |
               set +e
               git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git $HOME/sweet
-              $HOME/sweet/docker-build
-              mkdir $HOME/secrets
-              chmod 1777 $HOME/secrets
-              echo "HOME=$HOME:"
-              ls -l $HOME
+              $HOME/sweet/docker-build --show
 
       - run:
-          name: "Create SSH key pairs"
+          name: "Run tests"
           command: |
-              cd test
-              echo test:
-              ls -l
-              docker-compose --verbose --env-file ./circleci.env run reset-client-keys
-              docker-compose --env-file ./circleci.env run reset-server-keys
-              ls -lR $HOME/secrets
-              
+              cd sbin
+              ./run-test-server
+              ./run-test-client
+
+
+
 workflows:
   version: 2
   test-push:

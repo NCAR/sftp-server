@@ -1,0 +1,143 @@
+#!/bin/sh
+PROG=run-test-client
+DESC="Run a client container counterpart to the run-test-server container"
+USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=svcont]"
+USAGE2="$PROG -h|--help"
+USAGE="Usage:
+    $USAGE1
+    $USAGE2"
+
+DEFAULT_CONT=testsftp
+DEFAULT_USER=sweetuser:sftp
+
+HELP_TEXT="
+        Start a test SFTP client container that connects to a container
+        started using run-test-server and runs the \"NCAR/sftp-server\" test
+        suite.
+
+        This script is intentionally simple to act as a guide to writing other
+        client test scripts.
+
+        The following arguments are supported:
+
+        -h|--help
+            Display help text and exit.
+
+        -u|--user=user:group
+            If given, the username:groupname or uid:gid that the client will
+            use. Default is $DEFAULT_USER. This must match the corresponding
+            argument passed to \"run-test-server\".
+
+        -s|--server=name
+            The name to assign to the SFTP server container; if not given,
+            \"${DEFAULT_CONT}\" is used. This must match the corresponding
+            argument passed to \"run-test-server\".
+"
+
+SCRIPTDIR=`cd \`dirname $0\`; pwd`
+
+SFTP_CONT=$DEFAULT_CONT
+USER_ARG=$DEFAULT_USER
+INTERACTIVE=0
+
+main () {
+    processCommandLine "$@" || return 1
+
+    checkForServerContainer "${SFTP_CONT}" || return 1
+
+    runTests "${USER_ARG}" "${SFTP_CONT}"
+
+    return 0
+}
+
+checkForServerContainer () {
+    container="$1"
+    echo "Checking for container \"$container\""
+    id=`docker ps -a --filter "name=${container}" -q`
+    if [ ":$id" = ':' ] ; then
+        echo "$PROG: $container: no such container" >&2
+        return 1
+    fi
+    return 0
+}
+
+runTests () {
+    userArg="$1"
+    container="$2"
+
+    echo "Starting test client for server container \"$container\":"
+    docker run -it --rm --name ${container}_cl \
+           --network ${container}_net \
+           --volumes-from ${container} \
+           --tmpfs /tmp:rw,noexec,nosuid \
+           -u ${userArg} \
+           -e "SERVICE=client" \
+           -e "RUN_ENV=test" \
+           -e "SFTP_SERVER=${container}" \
+           -e "INTERACTIVE=0" \
+           -e "ENTRYPOINT_DEBUG=0" \
+           --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
+           ncar/sftp-server:latest \
+           --source=/usr/local/sftp-server/sbin/sftp-cl-entrypoint.rc \
+           /usr/local/sftp-server/tbin/sftp-client-shell
+}
+
+
+processCommandLine () {
+    while [ $# != 0 ] ; do
+        arg="$1"
+        shift
+        case $arg in
+            -h|--help)
+                cat <<EOF
+NAME            
+        $PROG - $DESC
+
+SYNOPSIS
+        $USAGE1
+        $USAGE2
+        $USAGE3
+
+DESCRIPTION$HELP_TEXT
+EOF
+                return 1 ;;
+
+            -[us]?*)
+                opt=`expr "${arg}" : '\(-.\).*'`
+                rest=`expr "${arg}" : '-.\(.*\)'`
+                set : ${opt} "${rest}" "$@"
+                shift ;;
+
+            --*=*)
+                opt=`expr "${arg}" : '\(--[^=]*\)=.*'`
+                rest=`expr "${arg}" : '--[^=]*=\(.*\)'`
+                set : ${opt} "${rest}" "$@"
+                shift ;;
+            
+            -u|--user)
+                USER_ARG="$1"
+                shift ;;
+            
+            -s|--server)
+                SFTP_CONT="$1"
+                shift ;;
+            
+            -*)
+                echo "$PROG: invalid option: $arg" >&2
+                echo "$USAGE" >&2
+                return 1 ;;
+            
+            *)
+                echo "$PROG: invalid arguments: $arg $@" >&2
+                echo "$USAGE" >&2
+                return 1 ;;
+        esac
+    done
+
+    return 0
+
+}
+
+main "$@"
+
+

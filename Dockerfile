@@ -41,6 +41,8 @@ ENV SFTPUSER=${SFTPUSER} \
 COPY sbin ${PACKAGE_DIR}/sbin/
 COPY tbin ${PACKAGE_DIR}/tbin/
 COPY rshbin ${PACKAGE_DIR}/rshbin/
+COPY DevTesting.md gendoc-src ${PACKAGE_DIR}/
+
 RUN set -xe ; \
     make-local-links ${PACKAGE_DIR} /usr/local ; \
     sweet-build-init $SFTPUSERID ; \
@@ -86,7 +88,10 @@ RUN set -xe ; \
     rm /etc/ssh/ssh_host*_key* ; \
     sed -e '/module(load=.imklog.)/s/^/#/' \
          /etc/rsyslog.conf >/etc/rsyslog.conf.new ; \
-    mv /etc/rsyslog.conf.new /etc/rsyslog.conf
+    mv /etc/rsyslog.conf.new /etc/rsyslog.conf ; \
+    cd $PACKAGE_DIR ; \
+    /usr/local/sweet/sbin/gendoc -v >gendoc/.log 2>&1 ; \
+    chown -R $SFTPUSER:$SFTPGROUP gendoc
 
 
 USER $SFTPUSER

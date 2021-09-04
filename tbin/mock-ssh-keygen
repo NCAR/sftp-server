@@ -5,6 +5,8 @@
 PROG=mock-ssh-keygen
 while [ $# != 0 ] ; do
     case $1 in
+        --help)
+            exit 0 ;;
         -q) shift ;;
         -N) shift ; shift ;;
         -t) TYPE=$2 ; shift ; shift ;;

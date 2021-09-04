@@ -73,7 +73,7 @@ done
 eval $finally
 
 if [ ! -w "${DATA_DIR}" ] ; then
-    echo "$PROG: ${DATA_DIR} (\$DATA_DIR\") must be writable" >&2
+    echo "$PROG: ${DATA_DIR} (\$DATA_DIR\) must be writable" >&2
     exit 1
 fi
 

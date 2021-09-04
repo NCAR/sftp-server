@@ -1,7 +1,8 @@
 ## Running Tests in the "dev" environment
 
 The sftp-server package supports automated testing. The docker-compose
-configuration in the `dev` directory is set up to do this.
+configuration in the `dev` directory is set up to do this. (But see the
+`sbin/run-test-server` and `sbin/run-test-client` scripts as well.)
 
 The `dev/docker-compose.yml' file defines a number of services. The main
 services (started by `docker-compose up`) are "server" and "client".

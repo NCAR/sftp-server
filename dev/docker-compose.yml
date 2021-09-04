@@ -87,6 +87,28 @@ services:
       ENTRYPOINT_DEBUG:
     profiles: [ "reset-keys" ]
 
+  gendoc:
+    image: ncar/sftp-server:latest
+    command: [ "/usr/local/sweet/sbin/gendoc","-v","${DATA_DIR}/wiki","." ]
+    volumes:
+      - type: bind
+        read_only: "true"
+        source: ${LOCAL_SECRETS}
+        target: ${SECRETS_VOL}
+      - type: bind
+        source: /tmp
+        target: ${DATA_DIR}
+      - type: tmpfs
+        target: /tmp
+    environment:
+      SERVICE: sweet-pl5
+      RUN_ENV: dev
+      COMPOSE_PROFILES: ${COMPOSE_PROFILES}
+      SFTP_SERVER: sftpd
+      INTERACTIVE: 0
+      ENTRYPOINT_DEBUG: 1
+    profiles: [ "test" ]
+
 volumes:
   testdata:
   

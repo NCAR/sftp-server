@@ -1,0 +1,211 @@
+#!/bin/sh
+PROG=run-test-server
+DESC="Start a test SFTP instance with temporary keys"
+USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=container]"
+USAGE2="$PROG [-h|--help]"
+USAGE="Usage:
+    $USAGE1
+    $USAGE2"
+
+DEFAULT_CONT=testsftp
+DEFAULT_USER=sweetuser:sftp
+
+HELP_TEXT="
+        Configure and start a test SFTP container with generated server- and
+        client-side keys.
+
+        The SFTP container is always assigned a name. The name can be given
+        on the command line, but if it is not, \"$DEFAULT_CONT\" is used.
+        The container will run detached. Use \"docker logs <name>\"
+        to view logs. Use \"docker kill <name>\" to stop the server.
+
+        A client container can access the generated keys if the
+        \"--volumes-from <containername>\" argument is included in the
+        \"docker run\" command. Specifically, the volumes shared from
+        the server container include \"/run/secrets\", and \"/mnt\"; the
+        former contains the shared keys, and the later is the volume that
+        SFTP will serve: this allows a client to bypass the SFTP interface to
+        either seed the data that can be downloaded or verify data that is
+        uploaded. See \"run-test-client\".
+
+        This script intentionally shuns volume mounts and docker-compose.
+        It is designed for testing in remote CI environments (CircleCI in
+        particular) and for use by external packages.
+
+        The following flags are supported:
+
+        -u|--user=user:group
+            If given, the username:groupname or uid:gid that the client will
+            use. Default is $DEFAULT_USER.
+
+        -s|--server=name
+            The name to assign to the SFTP server container; if not given,
+            \"${DEFAULT_CONT}\" is used.
+
+        -h|--help
+            Display help text and exit.
+"
+
+SFTP_CONT=$DEFAULT_CONT
+USER_ARG=$DEFAULT_USER
+
+main () {
+    processCommandLine "$@" || return 1
+
+    removeExistingContainer ${SFTP_CONT} || return 1
+
+    createBridgeNetwork ${SFTP_CONT} || return 1
+    
+    createStoppedSftpContainer ${SFTP_CONT} || return 1
+
+    createKeyPairsUnderMnt ${SFTP_CONT} ${USER_ARG} || return 1
+
+    moveKeyPairsToSecrets ${SFTP_CONT} || return 1
+
+    echo "Starting container \"${SFTP_CONT}\""
+    docker start ${SFTP_CONT}
+    rc=$?
+
+    ( docker wait ${SFTP_CONT} >/dev/null 2>&1 ; docker network rm ${SFTP_CONT}_net >/dev/null 2>&1 ) &
+    trap '' 1 2 13 15
+
+    return $rc
+}
+
+removeExistingContainer () {
+    container="$1"
+    id=`docker ps -a --filter "name=${container}" -q`
+    if [ ":$id" != ':' ] ; then
+        echo "Removing existing container \"$container\""
+        docker rm -f ${container}
+    fi
+}
+
+createBridgeNetwork () {
+    container="$1"
+
+    netinfo=`docker network inspect ${container}_net 2>/dev/null`
+    if [ ":$netinfo" = ":[]" ] ; then
+        trap "docker network rm ${container}_net ; exit 255" 1 2 13 15
+        echo "Creating network \"${container}_net\""
+        docker network create ${container}_net
+    fi
+}
+
+createStoppedSftpContainer () {
+    container="$1"
+
+    echo "Creating stopped container \"$container\""
+    trap "docker kill ${container} >/dev/null 2>&1 ; docker network rm ${container}_net >/dev/null 2>&1 ; exit 255" 1 2 13 15
+    docker create --rm --name ${container} \
+           --network ${container}_net \
+           -v /run/secrets -v /mnt \
+           --tmpfs /tmp:rw,noexec,nosuid \
+           -e "SERVICE=server" \
+           -e "RUN_ENV=test" \
+           -e "DATA_DIR=/mnt" \
+           -e "DATA_DIR=/mnt" \
+           -e "ENTRYPOINT_DEBUG=0" \
+           ncar/sftp-server:latest
+
+    echo "Initializing volume directories"
+    docker run --rm \
+           --volumes-from ${container} \
+           debian:buster-slim \
+           /bin/bash -c 'mkdir -p /var/data /mnt /run/secrets ; chmod 1777 /var/data /mnt'
+}
+
+createKeyPairsUnderMnt () {
+    container="$1"
+    usergrp="$2"
+
+    echo "Creating client keys"
+    docker run --rm \
+       --volumes-from ${container} \
+       -u ${usergrp} \
+       -e "SERVICE=client" \
+       -e "RUN_ENV=test" \
+       -e "DATA_DIR=/mnt" \
+       --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
+       ncar/sftp-server:latest \
+       /usr/local/sftp-server/sbin/ssh-keysync || return 1
+
+    echo "Creating server"
+    docker run --rm \
+           --volumes-from ${container} \
+           -e "SERVICE=server" \
+           -e "RUN_ENV=test" \
+           -e "DATA_DIR=/mnt" \
+           --tmpfs /tmp:rw,noexec,nosuid \
+           --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
+           ncar/sftp-server:latest \
+           /usr/local/sftp-server/sbin/ssh-keysync || return 1
+}
+
+moveKeyPairsToSecrets () {
+    container="$1"
+
+    echo "Installing keys"
+    docker run --rm \
+           --volumes-from ${container} \
+           debian:buster-slim \
+           /bin/bash -c 'mv /mnt/* /run/secrets'
+}
+
+
+processCommandLine () {
+    while [ $# != 0 ] ; do
+        arg="$1"
+        shift
+        case $arg in
+            -h|--help)
+                cat <<EOF
+NAME            
+        $PROG - $DESC
+
+SYNOPSIS
+        $USAGE1
+        $USAGE2
+        $USAGE3
+
+DESCRIPTION$HELP_TEXT
+EOF
+                return 1 ;;
+
+            -[us]?*)
+                opt=`expr "${arg}" : '\(-.\).*'`
+                rest=`expr "${arg}" : '-.\(.*\)'`
+                set : ${opt} "${rest}" "$@"
+                shift ;;
+
+            --*=*)
+                opt=`expr "${arg}" : '\(--[^=]*\)=.*'`
+                rest=`expr "${arg}" : '--[^=]*=\(.*\)'`
+                set : ${opt} "${rest}" "$@"
+                shift ;;
+            
+            -u|--user)
+                USER_ARG="$1"
+                shift ;;
+            
+            -s|--server)
+                SFTP_CONT="$1"
+                shift ;;
+            
+            -*)
+                echo "$PROG: invalid option: $arg" >&2
+                echo "$USAGE" >&2
+                return 1 ;;
+            
+            *)
+                echo "$PROG: unexpected arguments: $arg $@" >&2
+                echo "$USAGE" >&2
+                return 1 ;;
+        esac
+    done
+
+    return 0
+
+}
+
+main "$@"
