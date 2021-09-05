@@ -23,12 +23,18 @@ jobs:
       - run:
           name: "Run tests"
           command: |
-              set +e
+              set +ex
               cd sbin
               nohup ./run-test-server </dev/null >../../test-server.log 2>&1 &
-              sleep 2
-              ./run-test-client
+              for i in 1 2 2 3 5 8 13 21 ; do
+                  if grep -q 'Server listening ' ../../test-server.log ; then
+                      echo server is up
+                      break
+                  fi
+                  sleep $i
+              done
               cat ../../test-server.log
+              ./run-test-client
               exit 0
 
 

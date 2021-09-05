@@ -102,7 +102,7 @@ createStoppedSftpContainer () {
     container="$1"
     network="$2"
 
-    trap "docker rm -f ${container} >/dev/nbull 2>&1 ; exit 255" 1 2 13 15
+    trap "docker rm -f ${container} >/dev/null 2>&1 ; exit 255" 1 2 13 15
     echo "Creating stopped container \"$container\""
     docker create --rm --name ${container} \
            -v /run/secrets -v /mnt \
@@ -110,7 +110,6 @@ createStoppedSftpContainer () {
            --tmpfs /tmp:rw,noexec,nosuid \
            -e "SERVICE=server" \
            -e "RUN_ENV=test" \
-           -e "DATA_DIR=/mnt" \
            -e "DATA_DIR=/mnt" \
            -e "ENTRYPOINT_DEBUG=0" \
            ncar/sftp-server:latest \
