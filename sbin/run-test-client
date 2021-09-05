@@ -52,7 +52,7 @@ main () {
     
     checkServerContainer "${SFTP_CONT}" "${NETWORK}" || return 1
 
-    runTests "${USER_ARG}" "${SFTP_CONT}" || return 1
+    runTests "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" || return 1
 
     return 0
 }
