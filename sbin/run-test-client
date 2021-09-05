@@ -32,6 +32,9 @@ HELP_TEXT="
             The name to assign to the SFTP server container; if not given,
             \"${DEFAULT_CONT}\" is used. This must match the corresponding
             argument passed to \"run-test-server\".
+
+        -n|--network=network
+            The name of the network to use. Default is \"<container>_net\".
 "
 
 SCRIPTDIR=`cd \`dirname $0\`; pwd`
@@ -39,35 +42,58 @@ SCRIPTDIR=`cd \`dirname $0\`; pwd`
 SFTP_CONT=$DEFAULT_CONT
 USER_ARG=$DEFAULT_USER
 INTERACTIVE=0
+NETWORK=
 
 main () {
     processCommandLine "$@" || return 1
 
-    checkForServerContainer "${SFTP_CONT}" || return 1
+    checkNetwork "${NETWORK}" || return 1
+    
+    checkServerContainer "${SFTP_CONT}" "${NETWORK}" || return 1
 
     runTests "${USER_ARG}" "${SFTP_CONT}" || return 1
 
     return 0
 }
 
-checkForServerContainer () {
+checkNetwork () {
+    network="$1"
+    netinfo=`docker network inspect ${network} 2>/dev/null`
+    if [ ":$netinfo" = ":[]" ] ; then
+        echo "$PROG: \"${network}\": no such network" >&2
+        exit 1
+    fi
+    return 0
+}
+
+
+checkServerContainer () {
     container="$1"
+    network="$2"
     echo "Checking for container \"$container\""
-    id=`docker ps -a --filter "name=${container}" -q`
+    id=`docker ps --filter "name=${container}" -q`
     if [ ":$id" = ':' ] ; then
         echo "$PROG: $container: no such container" >&2
         return 1
     fi
+    set : `docker inspect -f '{{range $key, $value := .NetworkSettings.Networks}}{{$key}} {{end}}' ${container}`
+    svnet="$2"
+    if [ ":${svnet}" != ":${network}" ] ; then
+        echo "$PROG: server uses network \"${svnet}\", not \"${network}\"" >&2
+        return 1
+    fi
+    
     return 0
 }
 
 runTests () {
     userArg="$1"
     container="$2"
+    network="$3"
 
-    echo "Starting test client for server container \"$container\":"
-    docker run -it --rm --name ${container}_cl \
-           --network ${container}_net \
+    echo "Creating test client for server container \"$container\"..."
+    docker create --rm --name ${container}_cl \
+           --network ${NETWORK} \
            --volumes-from ${container} \
            --tmpfs /tmp:rw,noexec,nosuid \
            -u ${userArg} \
@@ -80,6 +106,11 @@ runTests () {
            ncar/sftp-server:latest \
            --source=/usr/local/sftp-server/sbin/sftp-cl-entrypoint.rc \
            /usr/local/sftp-server/tbin/sftp-client-shell
+    network=`docker inspect -f '{{range $key, $value := .NetworkSettings.Networks}}{{$key}} {{end}}' ${container}_cl`
+    echo "Using network \"${network}\""
+
+    echo "Starting container \"${container}_cl\"..."
+    docker start -a ${container}_cl
 }
 
 
@@ -102,7 +133,7 @@ DESCRIPTION$HELP_TEXT
 EOF
                 return 1 ;;
 
-            -[us]?*)
+            -[nus]?*)
                 opt=`expr "${arg}" : '\(-.\).*'`
                 rest=`expr "${arg}" : '-.\(.*\)'`
                 set : ${opt} "${rest}" "$@"
@@ -122,6 +153,10 @@ EOF
                 SFTP_CONT="$1"
                 shift ;;
             
+            -n|--network)
+                NETWORK="$1"
+                shift ;;
+            
             -*)
                 echo "$PROG: invalid option: $arg" >&2
                 echo "$USAGE" >&2
@@ -133,6 +168,9 @@ EOF
                 return 1 ;;
         esac
     done
+    if [ ":${NETWORK}" = ":" ] ; then
+        NETWORK="${SFTP_CONT}_net"
+    fi
 
     return 0
 

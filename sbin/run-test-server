@@ -17,8 +17,8 @@ HELP_TEXT="
         The SFTP container is always assigned a name. The name can be given
         on the command line, but if it is not, \"$DEFAULT_CONT\" is used.
         The container will run detached. Use \"docker logs <name>\"
-        to view logs. Use \"cleanup-test-server <name>\" to stop and clean up
-        the server container and its network.
+        to view logs. Use \"docker kill <name>\" to stop/remove the server
+        container.
 
         A client container can access the generated keys if the
         \"--volumes-from <containername>\" argument is included in the
@@ -43,21 +43,25 @@ HELP_TEXT="
             The name to assign to the SFTP server container; if not given,
             \"${DEFAULT_CONT}\" is used.
 
+        -n|--network=network
+            The name of the network to use. Default is \"<container>_net\".
+
         -h|--help
             Display help text and exit.
 "
 
 SFTP_CONT=$DEFAULT_CONT
 USER_ARG=$DEFAULT_USER
+NETWORK=
 
 main () {
     processCommandLine "$@" || return 1
 
-    removeExistingContainer ${SFTP_CONT} || return 1
+    setupNetwork ${NETWORK} || return
 
-    createBridgeNetwork ${SFTP_CONT} || return 1
+    removeExistingContainer ${SFTP_CONT} || return 1
     
-    createStoppedSftpContainer ${SFTP_CONT} || return 1
+    createStoppedSftpContainer ${SFTP_CONT} ${NETWORK} || return 1
 
     createKeyPairsUnderMnt ${SFTP_CONT} ${USER_ARG} || return 1
 
@@ -68,8 +72,23 @@ main () {
     return $?
 }
 
+setupNetwork () {
+    network="$1"
+    netinfo=`docker network inspect ${network} 2>/dev/null`
+    if [ ":$netinfo" = ":[]" ] ; then
+        echo "Creating network \"${network}\"..."
+        docker network create --driver bridge ${network} || return 1
+    fi
+    return 0
+}
+
 removeExistingContainer () {
     container="$1"
+    id=`docker ps --filter "name=${container}" -q`
+    if [ ":$id" != ':' ] ; then
+        echo "Stopping existing container \"$container\""
+        docker kill ${container}
+    fi
     id=`docker ps -a --filter "name=${container}" -q`
     if [ ":$id" != ':' ] ; then
         echo "Removing existing container \"$container\""
@@ -77,23 +96,15 @@ removeExistingContainer () {
     fi
 }
 
-createBridgeNetwork () {
-    container="$1"
-
-    netinfo=`docker network inspect ${container}_net 2>/dev/null`
-    if [ ":$netinfo" = ":[]" ] ; then
-        echo "Creating network \"${container}_net\""
-        docker network create ${container}_net
-    fi
-}
-
 createStoppedSftpContainer () {
     container="$1"
+    network="$2"
 
+    trap "docker rm -f ${container} >/dev/nbull 2>&1 ; exit 255" 1 2 13 15
     echo "Creating stopped container \"$container\""
-    docker create --name ${container} \
-           --network ${container}_net \
+    docker create --rm --name ${container} \
            -v /run/secrets -v /mnt \
+           --network ${network} \
            --tmpfs /tmp:rw,noexec,nosuid \
            -e "SERVICE=server" \
            -e "RUN_ENV=test" \
@@ -101,6 +112,14 @@ createStoppedSftpContainer () {
            -e "DATA_DIR=/mnt" \
            -e "ENTRYPOINT_DEBUG=0" \
            ncar/sftp-server:latest
+
+    set : `docker inspect -f '{{range $key, $value := .NetworkSettings.Networks}}{{$key}} {{end}}' ${container}`
+    net="$2"
+    if [ ":${net}" != ":${NETWORK}" ] ; then
+        echo "$PROG: unable to attach to network \"${NETWORK}\" (using \"${net}\")" >&2
+        return 1
+    fi
+    echo "Using network \"${net}\""
 
     echo "Initializing volume directories"
     docker run --rm \
@@ -166,7 +185,7 @@ DESCRIPTION$HELP_TEXT
 EOF
                 return 1 ;;
 
-            -[us]?*)
+            -[nus]?*)
                 opt=`expr "${arg}" : '\(-.\).*'`
                 rest=`expr "${arg}" : '-.\(.*\)'`
                 set : ${opt} "${rest}" "$@"
@@ -186,6 +205,10 @@ EOF
                 SFTP_CONT="$1"
                 shift ;;
             
+            -n|--network)
+                NETWORK="$1"
+                shift ;;
+            
             -*)
                 echo "$PROG: invalid option: $arg" >&2
                 echo "$USAGE" >&2
@@ -197,6 +220,9 @@ EOF
                 return 1 ;;
         esac
     done
+    if [ ":${NETWORK}" = ":" ] ; then
+        NETWORK="${SFTP_CONT}_net"
+    fi
 
     return 0
 
