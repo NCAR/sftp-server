@@ -94,7 +94,7 @@ runTests () {
 
     echo "Creating test client for server container \"$container\"..."
     docker create --rm --name ${container}_cl \
-           --network ${NETWORK} \
+           --network ${network} \
            --volumes-from ${container} \
            --tmpfs /tmp:rw,noexec,nosuid \
            -u ${userArg} \
