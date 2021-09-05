@@ -46,7 +46,9 @@ jobs:
       - run:
           name: "Build and Tag Container"
           command: |
-              ./docker-build --version=$CIRCLE_TAG
+              set +e
+              git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git $HOME/sweet
+              $HOME/sweet/docker-build --version=$CIRCLE_TAG
 
       - run:
           name: "Run tests"
