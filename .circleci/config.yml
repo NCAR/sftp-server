@@ -25,9 +25,10 @@ jobs:
           command: |
               set +e
               cd sbin
-              ./run-test-server &
+              nohup ./run-test-server </dev/null >../../test-server.log 2>&1 &
               sleep 2
               ./run-test-client
+              cat ../../test-server.log
               exit 0
 
 
