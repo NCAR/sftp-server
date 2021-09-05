@@ -50,6 +50,7 @@ jobs:
 
       - run:
           name: "Run tests"
+          command: |
               cd sbin
               nohup ./run-test-server </dev/null >../../test-server.log 2>&1 &
               for i in 1 2 2 3 5 8 13 21 ; do
