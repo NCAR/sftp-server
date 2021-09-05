@@ -43,6 +43,7 @@ SFTP_CONT=$DEFAULT_CONT
 USER_ARG=$DEFAULT_USER
 INTERACTIVE=0
 NETWORK=
+SFTP_PORT=2222
 
 main () {
     processCommandLine "$@" || return 1
@@ -100,14 +101,16 @@ runTests () {
            -e "SERVICE=client" \
            -e "RUN_ENV=test" \
            -e "SFTP_SERVER=${container}" \
+           -e "SFTP_PORT=${SFTP_PORT}" \
            -e "INTERACTIVE=0" \
            -e "ENTRYPOINT_DEBUG=0" \
            --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
            ncar/sftp-server:latest \
            --source=/usr/local/sftp-server/sbin/sftp-cl-entrypoint.rc \
            /usr/local/sftp-server/tbin/sftp-client-shell
-    network=`docker inspect -f '{{range $key, $value := .NetworkSettings.Networks}}{{$key}} {{end}}' ${container}_cl`
-    echo "Using network \"${network}\""
+    set : `docker inspect -f '{{range $key, $value := .NetworkSettings.Networks}}{{$key}} {{end}}' ${container}_cl`
+    clnet="$2"
+    echo "Using network \"${clnet}\""
 
     echo "Starting container \"${container}_cl\"..."
     docker start -a ${container}_cl

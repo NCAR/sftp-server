@@ -100,6 +100,8 @@ WORKDIR ${PACKAGE_DIR}
 
 ENTRYPOINT [ "/usr/local/sweet/sbin/sweet-entrypoint.sh", "--source=/usr/local/sftp-server/sbin/sftp-sv-entrypoint.rc" ]
 
+EXPOSE 22
+
 VOLUME $DATA_DIR
 VOLUME $SECRETS_VOL
 

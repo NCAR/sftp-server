@@ -1,9 +1,7 @@
 #!/bin/bash
 PROG=sftp-client-shell
 DESC="Script for testing sftp-server"
-USAGE1="$PROG"
-USAGE2="$PROG command..."
-USAGE3="$PROG -h|--help"
+USAGE1="$PROG [-h|--help]"
 HELP_TEXT="
         This script is meant to be run as the main command in a container
         that tests connectivity to a \"sftp-server\" container.
@@ -20,6 +18,13 @@ HELP_TEXT="
         and \$INTERACTIVE is not truthy, the script will run all test scripts
         in ${PACKAGE_DIR}/tbin then exit.
 "
+HELP_ENVIRONMENT="
+        SFTP_SERVER
+            The name/address of the SFTP server. Required.
+
+        SFTP_PORT
+            The SFTP network port. If not defined, 22 is used.
+"
 
 case $1 in
     -h|--help)
@@ -29,8 +34,6 @@ NAME
 
 SYNOPSIS
         $USAGE1
-        $USAGE2
-        $USAGE3
 
 DESCRIPTION$HELP_TEXT
 EOF
@@ -40,7 +43,9 @@ if [ ":${SFTP_SERVER}" = ":" ] ; then
     echo "$PROG: SFTP_SERVER environment variable is not set" >&2
     exit 1
 fi
-SERVER="${SFTP_SERVER}:22"
+SFTP_PORT=${SFTP_PORT:-22}
+
+SERVER="${SFTP_SERVER}:${SFTP_PORT}"
 
 echo "Waiting for \"${SERVER}\"..."
 check-server --wait=60 ${SERVER}
@@ -64,6 +69,6 @@ fi
 cd ${PACKAGE_DIR}/tbin || exit
 runtests
 rc=$?
-ssh -i $ID_RSA sftp@$SFTP_SERVER shutdown
+ssh -i $ID_RSA -p $SFTP_PORT sftp@$SFTP_SERVER shutdown
 
 exit $rc

@@ -19,6 +19,8 @@ cd $TESTDIR
 
 . ../../sweet/lib/shtest/init.rc
 
+SFTP_PORT=${SFTP_PORT:=22}
+
 TSTAMP=`tstamp`
 TEST_DATA_DIR=${DATA_DIR}/sweetusertest/test-connect
 
@@ -40,7 +42,7 @@ echo "ls -l" >>${TMPDIR}/batch
 echo "exit" >>${TMPDIR}/batch
 
 DEFINE_TEST "Given file in \$DATA_DIR, sftp ls -l returns expected output"
-RUN sftp -i ${ID_RSA} -b ${TMPDIR}/batch ${SFTPUSER}@${SFTP_SERVER}
+RUN sftp -i ${ID_RSA} -b ${TMPDIR}/batch -P ${SFTP_PORT} ${SFTPUSER}@${SFTP_SERVER}
 if gotExpectedOutput --retval 0 &&
    gotExpectedOutput --regex "^-rw-.* ${SWEETUSER} .* testfile"
 then
@@ -55,7 +57,7 @@ echo "get testfile ${TMPDIR}/fetched-file" >>${TMPDIR}/batch
 echo "exit" >>${TMPDIR}/batch
 
 DEFINE_TEST "Given file in \$DATA_DIR, sftp get fetches file"
-RUN sftp -i ${ID_RSA} -b ${TMPDIR}/batch ${SFTPUSER}@${SFTP_SERVER}
+RUN sftp -i ${ID_RSA} -b ${TMPDIR}/batch -P ${SFTP_PORT} ${SFTPUSER}@${SFTP_SERVER}
 if gotExpectedOutput --retval 0 &&
    [ -f ${TMPDIR}/fetched-file ] &&
    cmp --quiet ${TMPDIR}/testfile ${TMPDIR}/fetched-file

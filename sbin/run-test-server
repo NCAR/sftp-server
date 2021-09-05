@@ -53,6 +53,7 @@ HELP_TEXT="
 SFTP_CONT=$DEFAULT_CONT
 USER_ARG=$DEFAULT_USER
 NETWORK=
+SFTP_PORT=2222
 
 main () {
     processCommandLine "$@" || return 1
@@ -68,7 +69,8 @@ main () {
     moveKeyPairsToSecrets ${SFTP_CONT} || return 1
 
     echo "Starting container \"${SFTP_CONT}\""
-    docker start ${SFTP_CONT}
+    docker start -a ${SFTP_CONT}
+
     return $?
 }
 
@@ -111,7 +113,8 @@ createStoppedSftpContainer () {
            -e "DATA_DIR=/mnt" \
            -e "DATA_DIR=/mnt" \
            -e "ENTRYPOINT_DEBUG=0" \
-           ncar/sftp-server:latest
+           ncar/sftp-server:latest \
+           /usr/sbin/sshd -D -e -p $SFTP_PORT
 
     set : `docker inspect -f '{{range $key, $value := .NetworkSettings.Networks}}{{$key}} {{end}}' ${container}`
     net="$2"
