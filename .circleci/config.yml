@@ -23,12 +23,10 @@ jobs:
       - run:
           name: "Run tests"
           command: |
-              set +ex
               cd sbin
               nohup ./run-test-server </dev/null >../../test-server.log 2>&1 &
               for i in 1 2 2 3 5 8 13 21 ; do
                   if grep -q 'Server listening ' ../../test-server.log ; then
-                      echo server is up
                       break
                   fi
                   sleep $i
@@ -37,6 +35,57 @@ jobs:
               ./run-test-client
               exit 0
 
+  push:
+    <<: *defaults
+
+    steps:
+      - checkout
+
+      - setup_remote_docker
+
+      - run:
+          name: "Build and Tag Container"
+          command: |
+              ./docker-build --version=$CIRCLE_TAG
+
+      - run:
+          name: "Run tests"
+              cd sbin
+              nohup ./run-test-server </dev/null >../../test-server.log 2>&1 &
+              for i in 1 2 2 3 5 8 13 21 ; do
+                  if grep -q 'Server listening ' ../../test-server.log ; then
+                      break
+                  fi
+                  sleep $i
+              done
+              cat ../../test-server.log
+              ./run-test-client
+              exit 0
+
+      - run:
+          name: "Push Container"
+          command: |
+              printenv | sed -n -e 's/DOCKERHUB_PASSWORD=\(.*\)/\1/p' | docker login --username $DOCKERHUB_USERNAME --password-stdin
+              docker push ncar/sftp-server
+
+      - run:
+          name: "Merge and Push Wiki Documentation"
+          command: |
+              set +e
+              git config --global user.email "${GH_USER_EMAIL}"
+              git config --global user.name "${GH_USER_NAME}"
+              REPO=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+              export REPO
+              git clone https://${GH_TOKEN}@github.com/$REPO.wiki.git $HOME/gendocs
+              docker create --name docgenerator ncar/sftp-server gendoc -w /var/data/wiki -v
+              docker cp $HOME/gendocs/. docgenerator:/var/data/wiki
+              docker start -a docgenerator
+              docker cp docgenerator:/usr/local/sftp-server/gendoc/. $HOME/gendocs
+              cd $HOME/gendocs
+              git add .
+              if git commit -m 'Latest doc build' ; then
+                  git push
+              fi
 
 workflows:
   version: 2
@@ -44,3 +93,10 @@ workflows:
     jobs:
       - test:
           context: sweg
+      - push:
+          context: sweg
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+([-+].*)?$/
+            branches:
+              ignore: /.*/
