@@ -5,7 +5,11 @@ fi
 
 SCRIPTDIR=`cd \`dirname $0\`; pwd`
 cd ${SCRIPTDIR}
+echo "Running tests..."
 runtests
+rc=$?
 
-ssh -i $ID_RSA -p $SFTP_PORT sftp@$SFTP_SERVER shutdown
+echo "Shutting down ${SFTP_SERVER}:${SFTP_PORT}..."
+ssh -i $ID_RSA -p ${SFTP_PORT} ${SFTP_USER}@${SFTP_SERVER} shutdown
 
+exit $rc
