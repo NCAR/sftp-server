@@ -32,7 +32,7 @@ services:
     image: ncar/sftp-server:latest
     user: ${SWEETUSER}:${SFTPGROUP}
     entrypoint: [ "/usr/local/sweet/sbin/sweet-entrypoint.sh", "--source=/usr/local/sftp-server/sbin/sftp-cl-entrypoint.rc" ]
-    command: [ "/usr/local/sftp-server/tbin/sftp-client-shell" ]
+    command: [ "/usr/local/sftp-server/sbin/sftp-client-shell" ]
     volumes:
       - type: bind
         source: ${LOCAL_BASE}/sftp-server

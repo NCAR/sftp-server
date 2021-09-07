@@ -1,7 +1,7 @@
 #!/bin/sh
 PROG=run-test-client
 DESC="Run a client container counterpart to the run-test-server container"
-USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=svcont]"
+USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=svcont] command..."
 USAGE2="$PROG -h|--help"
 USAGE="Usage:
     $USAGE1
@@ -15,8 +15,18 @@ HELP_TEXT="
         started using run-test-server and runs the \"NCAR/sftp-server\" test
         suite.
 
-        This script is intentionally simple to act as a guide to writing other
-        client test scripts.
+        The client container uses the \"sftp-cl-entrypoint.rc\" as part of its
+        ENTRYPOINT, and uses \"sbin/sftp-client-shell\" to run the final
+        command. This implies that:
+
+          - the command is run from the ncar/sftp-server work directory;
+          - special environment variables defined by the sftp-server package
+            are set (see ENVIRONMENT  below);
+          - if a command is provided on the command line, the command is
+            executed in the client container; otherwise, if standard input is
+            attached to a terminal, an interactive shell is created in the
+            client container; otherwise, all known ncar/sftp-server test
+            scripts are run.
 
         The following arguments are supported:
 
@@ -36,25 +46,51 @@ HELP_TEXT="
         -n|--network=network
             The name of the network to use. Default is \"<container>_net\".
 "
+ENVIRONMENT_HELP="
+        The following special environment variables are all set automatically
+        in the client container:
+
+        SFTP_PORT
+            The SFTP server container network port to connect to.
+
+        SFTP_SERVER
+            The name of the SFTP server container
+
+        SFTP_SERVER_IS_UP
+            Set to \"yes\" if and only if \"sbin/sftp-client-shell\" detected
+            that the SFTP server is up.
+
+        SFTPGROUP
+        SFTPGROUPID
+        SFTPUSER
+        SFTPUSERID
+            The group/user names/id of the user to log in as on the SFTP server
+
+        ID_ED25519
+        ID_RSA
+        ID_ECDSA
+             The paths to SSH identity files for the various key types.
+            
+"
 
 SCRIPTDIR=`cd \`dirname $0\`; pwd`
 
+SFTP_PORT=2222
 SFTP_CONT=$DEFAULT_CONT
 USER_ARG=$DEFAULT_USER
 INTERACTIVE=0
 NETWORK=
-SFTP_PORT=2222
+COMMAND=
 
 main () {
-    processCommandLine "$@" || return 1
+    processCommandLine "$@"
 
     checkNetwork "${NETWORK}" || return 1
     
     checkServerContainer "${SFTP_CONT}" "${NETWORK}" || return 1
 
-    runTests "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" || return 1
+    runCommand "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" "$@"
 
-    return 0
 }
 
 checkNetwork () {
@@ -87,13 +123,23 @@ checkServerContainer () {
     return 0
 }
 
-runTests () {
+runCommand () {
     userArg="$1"
-    container="$2"
-    network="$3"
+    shift
+    container="$1"
+    shift
+    network="$1"
+    shift
+
+    itOpt=
+    iOpt=
+    if [ $# = 0 ] && [ -t 0 ] ; then
+        itOpt="-it"
+        iOpt="-i"
+    fi      
 
     echo "Creating test client for server container \"$container\"..."
-    docker create --rm --name ${container}_cl \
+    docker create $itOpt --rm --name ${container}_cl \
            --network ${network} \
            --volumes-from ${container} \
            --tmpfs /tmp:rw,noexec,nosuid \
@@ -102,18 +148,18 @@ runTests () {
            -e "RUN_ENV=test" \
            -e "SFTP_SERVER=${container}" \
            -e "SFTP_PORT=${SFTP_PORT}" \
-           -e "INTERACTIVE=0" \
+           -e "INTERACTIVE=$INTERACTIVE" \
            -e "ENTRYPOINT_DEBUG=0" \
            --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
            ncar/sftp-server:latest \
            --source=/usr/local/sftp-server/sbin/sftp-cl-entrypoint.rc \
-           /usr/local/sftp-server/tbin/sftp-client-shell
+           /usr/local/sftp-server/sbin/sftp-client-shell "$@"
     set : `docker inspect -f '{{range $key, $value := .NetworkSettings.Networks}}{{$key}} {{end}}' ${container}_cl`
     clnet="$2"
     echo "Using network \"${clnet}\""
 
     echo "Starting container \"${container}_cl\"..."
-    docker start -a ${container}_cl
+    docker start -a $iOpt ${container}_cl
 }
 
 
@@ -133,6 +179,7 @@ SYNOPSIS
         $USAGE3
 
 DESCRIPTION$HELP_TEXT
+ENVIRONMENT$ENVIRONMENT_HELP
 EOF
                 return 1 ;;
 
@@ -164,17 +211,15 @@ EOF
                 echo "$PROG: invalid option: $arg" >&2
                 echo "$USAGE" >&2
                 return 1 ;;
-            
             *)
-                echo "$PROG: invalid arguments: $arg $@" >&2
-                echo "$USAGE" >&2
-                return 1 ;;
+                COMMAND="$arg $@"
+                break ;;
         esac
     done
+    
     if [ ":${NETWORK}" = ":" ] ; then
         NETWORK="${SFTP_CONT}_net"
     fi
-
     return 0
 
 }

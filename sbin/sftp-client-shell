@@ -1,0 +1,102 @@
+#!/bin/bash
+PROG=sftp-client-shell
+DESC="Script for testing sftp-server"
+USAGE1="$PROG command ..."
+USAGE2="$PROG"
+USAGE3="$PROG [-h|--help]"
+HELP_TEXT="
+        This script is meant to be run as the main command in a container
+        that tests connectivity to a \"sftp-server\" container.
+ 
+        The container must source \"sftp-cl-entrypoint.rc\" as part of its
+        ENTRYPOINT, and the SFTP_SERVER environment variable must be set to
+        the name of the sftp server host/container.
+
+        If no arguments are provided and the INTERACTIVE environment variable
+        has a \"truthy\" value, this script assumes it is being run from docker
+        compose; it will enter an infinite sleep loop with the expectation that
+        someone will \"docker exec\" into the container. If no arguments are
+        provided and \$INTERACTIVE is not truthy but standard input is a
+        terminal, the script will exec \"/bin/bash -i\". Otherwise, if no
+        arguments are provided, the script will run all test scripts in
+        ${PACKAGE_DIR}/tbin, shutdown the server, and exit.
+
+        If arguments are provided, they are assumed to specify a command
+        to run in the container. Note that in this case, it is possible to
+        take advantage of environment variables set in the container by using
+        \"eval\" and quoting/escaping \"$\" characters. For example, the
+        following command arguments will connect to the server and shut it down:
+
+          eval 'ssh -i $ID_RSA -p $SFTP_PORT sftp@$SFTP_SERVER shutdown'
+        
+"
+HELP_ENVIRONMENT="
+        SFTP_SERVER
+            The name/address of the SFTP server. Should be set
+            automatically.
+
+        SFTP_PORT
+            The SFTP network port. If not defined, 22 is used.
+
+        SFTP_SERVER_IS_UP
+            Set to \"yes\" by this script if and only if it detects that the
+            SFTP server is up.
+"
+
+case $1 in
+    -h|--help)
+        cat <<EOF
+NAME
+        $PROG - $DESC
+
+SYNOPSIS
+        $USAGE1
+
+DESCRIPTION$HELP_TEXT
+EOF
+        exit 0 ;;
+esac
+if [ ":${SFTP_SERVER}" = ":" ] ; then
+    echo "$PROG: SFTP_SERVER environment variable is not set" >&2
+    exit 1
+fi
+SFTP_PORT=${SFTP_PORT:-22}
+export SFTP_PORT
+
+SERVER="${SFTP_SERVER}:${SFTP_PORT}"
+
+echo "Waiting for \"${SERVER}\"..."
+check-server --wait=60 ${SERVER}
+rc=$?
+if [ $rc = 0 ] ; then
+    echo "\"${SERVER}\" is ready" >&2
+    SFTP_SERVER_IS_UP=yes
+    export SFTP_SERVER_IS_UP=yes
+elif [ $rc = 1 ] ; then
+    echo "\"${SERVER}\" timed out" >&2
+    exit 1
+else
+    exit 1
+fi
+
+if [ $# != 0 ] ; then
+    "$@"
+    exit $?
+fi
+if truthy "${INTERACTIVE}" ; then
+    echo "Waiting indefinitely (use 'docker exec')..." >&2
+    while true ; do
+        sleep 60 ;
+    done
+    exit 0
+fi
+if [ -t 0 ] ; then
+    exec /bin/bash -i
+else
+    cd ${PACKAGE_DIR}/tbin || exit
+    runtests
+    rc=$?
+    ssh -i $ID_RSA -p $SFTP_PORT sftp@$SFTP_SERVER shutdown
+
+    exit $rc
+fi

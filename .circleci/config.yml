@@ -33,7 +33,6 @@ jobs:
               done
               cat ../../test-server.log
               ./run-test-client
-              exit 0
 
   push:
     <<: *defaults

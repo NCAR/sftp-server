@@ -1,6 +1,6 @@
 #!/bin/sh
 PROG=run-test-server
-DESC="Start a test SFTP instance with temporary keys"
+DESC="Start a test SFTP server container with temporary keys"
 USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=container]"
 USAGE2="$PROG [-h|--help]"
 USAGE="Usage:
