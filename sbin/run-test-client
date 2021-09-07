@@ -1,7 +1,8 @@
 #!/bin/sh
 PROG=run-test-client
 DESC="Run a client container counterpart to the run-test-server container"
-USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=svcont] command..."
+USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=svcont] [-n|--network=network]
+                 [-i|--image=clientimage] command..."
 USAGE2="$PROG -h|--help"
 USAGE="Usage:
     $USAGE1
@@ -9,6 +10,7 @@ USAGE="Usage:
 
 DEFAULT_CONT=testsftp
 DEFAULT_USER=sweetuser:sftp
+DEFAULT_IMAGE=ncar/sftp-server:latest
 
 HELP_TEXT="
         Start a test SFTP client container that connects to a container
@@ -19,7 +21,8 @@ HELP_TEXT="
         ENTRYPOINT, and uses \"sbin/sftp-client-shell\" to run the final
         command. This implies that:
 
-          - the command is run from the ncar/sftp-server work directory;
+          - if no alternate docker image is specified, the command will run
+            in the /usr/local/sftp-server directory;
           - special environment variables defined by the sftp-server package
             are set (see ENVIRONMENT  below);
           - if a command is provided on the command line, the command is
@@ -38,13 +41,17 @@ HELP_TEXT="
             use. Default is $DEFAULT_USER. This must match the corresponding
             argument passed to \"run-test-server\".
 
-        -s|--server=name
+        -s|--server=svcont
             The name to assign to the SFTP server container; if not given,
             \"${DEFAULT_CONT}\" is used. This must match the corresponding
             argument passed to \"run-test-server\".
 
         -n|--network=network
-            The name of the network to use. Default is \"<container>_net\".
+            The name of the docker network to use. Default is \"<svcont>_net\".
+
+        -i|--image=clientimage
+            The name of the docker image to use for the client container.
+            Default is \"${DEFAULT_IMAGE}\".
 "
 ENVIRONMENT_HELP="
         The following special environment variables are all set automatically
@@ -80,6 +87,7 @@ SFTP_CONT=$DEFAULT_CONT
 USER_ARG=$DEFAULT_USER
 INTERACTIVE=0
 NETWORK=
+IMAGE=$DEFAULT_IMAGE
 COMMAND=
 
 main () {
@@ -89,7 +97,7 @@ main () {
     
     checkServerContainer "${SFTP_CONT}" "${NETWORK}" || return 1
 
-    runCommand "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" "$@"
+    runCommand "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" "${IMAGE}" "$@"
 
 }
 
@@ -130,6 +138,8 @@ runCommand () {
     shift
     network="$1"
     shift
+    image="$1"
+    shift
 
     itOpt=
     iOpt=
@@ -151,7 +161,7 @@ runCommand () {
            -e "INTERACTIVE=$INTERACTIVE" \
            -e "ENTRYPOINT_DEBUG=0" \
            --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
-           ncar/sftp-server:latest \
+           ${image} \
            --source=/usr/local/sftp-server/sbin/sftp-cl-entrypoint.rc \
            /usr/local/sftp-server/sbin/sftp-client-shell "$@"
     set : `docker inspect -f '{{range $key, $value := .NetworkSettings.Networks}}{{$key}} {{end}}' ${container}_cl`
@@ -183,7 +193,7 @@ ENVIRONMENT$ENVIRONMENT_HELP
 EOF
                 return 1 ;;
 
-            -[nus]?*)
+            -[nusi]?*)
                 opt=`expr "${arg}" : '\(-.\).*'`
                 rest=`expr "${arg}" : '-.\(.*\)'`
                 set : ${opt} "${rest}" "$@"
@@ -205,6 +215,10 @@ EOF
             
             -n|--network)
                 NETWORK="$1"
+                shift ;;
+            
+            -i|--image)
+                IMAGE="$1"
                 shift ;;
             
             -*)

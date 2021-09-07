@@ -6,3 +6,6 @@ fi
 SCRIPTDIR=`cd \`dirname $0\`; pwd`
 cd ${SCRIPTDIR}
 runtests
+
+ssh -i $ID_RSA -p $SFTP_PORT sftp@$SFTP_SERVER shutdown
+
