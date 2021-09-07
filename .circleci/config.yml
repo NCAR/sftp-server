@@ -32,7 +32,7 @@ jobs:
                   sleep $i
               done
               cat ../../test-server.log
-              ./run-test-client
+              ./run-test-client tbin/run-sftp-tests
 
   push:
     <<: *defaults
@@ -61,8 +61,7 @@ jobs:
                   sleep $i
               done
               cat ../../test-server.log
-              ./run-test-client
-              exit 0
+              ./run-test-client tbin/run-sftp-tests
 
       - run:
           name: "Push Container"
