@@ -1,8 +1,16 @@
 #!/bin/sh
+PROG=run-sftp-tests
 if [ ":$1" = ":--help" ] ; then
     exit 0
 fi
 
+if [ ":${SFTP_SERVER}" = ":" ] ; then
+    echo "$PROG: SFTP_SERVER is not set" >&2
+    exit 1
+fi
+if [ ":${SFTP_PORT}" = ":" ] ; then
+    SFTP_PORT=22
+fi
 SCRIPTDIR=`cd \`dirname $0\`; pwd`
 cd ${SCRIPTDIR}
 echo "Running tests..."
