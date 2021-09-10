@@ -26,11 +26,12 @@ ENV SFTPUSER=${SFTPUSER} \
     SFTPUSERID=${SFTPUSERID} \
     SFTPGROUP=${SFTPGROUP} \
     SFTPGROUPID=${SFTPGROUPID} \
+    SFTP_DATA=/mnt \
     NOGROUPID=65534 \
     LOG_LEVEL=${LOG_LEVEL}
 
 #
-# $DATA_DIR is the directory served via sftp. Its user:group is
+# SFTP_DATA is the directory served via sftp. Its user:group is
 #  root:${SFTPGROUP} and its permissions are 775.
 # CONFIG_DIR is populated at runtime and is expected to include
 #  authorized_keys; in test environments it can also include known_hosts.
@@ -66,8 +67,8 @@ RUN set -xe ; \
     mkdir -p /home/${SFTPUSER}/.ssh ; \
     chown ${SFTPUSER}:${SFTPGROUP} /home/${SFTPUSER}/.ssh ; \
     ln -s ${SECRETS_DIR}/known_hosts /home/${SFTPUSER}/.ssh ; \
-    chown root:${SFTPGROUP} "${DATA_DIR}" ; \
-    chmod 775 "${DATA_DIR}" ; \
+    chown root:${SFTPGROUP} "${SFTP_DATA}" ; \
+    chmod 775 "${SFTP_DATA}" ; \
     sed \
      -e "s:^[# ]*HostKey.*_rsa_.*:HostKey ${SECRETS_DIR}/ssh_host_rsa_key:" \
      -e "s:^[# ]*HostKey.*_ecdsa_.*:HostKey ${SECRETS_DIR}/ssh_host_ecdsa_key:" \
@@ -81,7 +82,7 @@ RUN set -xe ; \
      -e "s:^[# ]*AllowAgentForwarding.*:AllowAgentForwarding no:" \
      -e "s:^[# ]*AllowTcpForwarding.*:AllowTcpForwarding no:" \
      -e "s:^[# ]*X11Forwarding.*:X11Forwarding no:" \
-     -e "s:^[# ]*Subsystem.*sftp.*:Subsystem   sftp internal-sftp -d ${DATA_DIR} ${SFTP_SERVER_OPTS}:" \
+     -e "s:^[# ]*Subsystem.*sftp.*:Subsystem   sftp internal-sftp -d ${SFTP_DATA} ${SFTP_SERVER_OPTS}:" \
      -e "s:^[# ]*PidFile.*:PidFile /tmp/sshd.pid:" \
       /etc/ssh/sshd_config >/etc/ssh/sshd_config.new ; \
     mv /etc/ssh/sshd_config.new /etc/ssh/sshd_config ; \
@@ -102,7 +103,7 @@ ENTRYPOINT [ "/usr/local/sweet/sbin/sweet-entrypoint.sh", "--source=/usr/local/s
 
 EXPOSE 22
 
-VOLUME $DATA_DIR
+VOLUME $SFTP_DATA
 VOLUME $SECRETS_VOL
 
 CMD [ "/usr/sbin/sshd", "-D", "-e" ]

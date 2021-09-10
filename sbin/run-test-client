@@ -97,7 +97,7 @@ main () {
     
     checkServerContainer "${SFTP_CONT}" "${NETWORK}" || return 1
 
-    runCommand "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" "${IMAGE}" "$@"
+    runCommand "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" "${IMAGE}" ${COMMAND}
 
 }
 

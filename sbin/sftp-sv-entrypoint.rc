@@ -11,5 +11,15 @@ df
 #
 wait-for-files -v --wait=0 "${SECRETS_DIR}/ssh_host_*_key" || exit 1
 
+CLIENT_PACKAGE=${CLIENT_PACKAGE:-$PACKAGE}
+SHARED_KEYS_DIR=${SECRETS_VOL}/${CLIENT_PACKAGE}/${RUN_ENV}
+if [ -f ${SHARED_KEYS_DIR}/authorized_keys ] ; then
+    if [ ! -f ${SECRETS_DIR}/authorized_keys ] ||
+       [ ${SECRETS_DIR}/authorized_keys -ot ${SHARED_KEYS_DIR}/authorized_keys ]
+    then
+        cp ${SHARED_KEYS_DIR}/authorized_keys ${SECRETS_DIR}/authorized_keys
+    fi
+fi
+
 
 

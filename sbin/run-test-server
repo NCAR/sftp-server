@@ -1,7 +1,8 @@
 #!/bin/sh
 PROG=run-test-server
 DESC="Start a test SFTP server container with temporary keys"
-USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=container]"
+USAGE1="$PROG [-u|--user=user:grp] [-s|--server=svcont] [-n|--network=network]
+                 [-p|--package=clientpackage]"
 USAGE2="$PROG [-h|--help]"
 USAGE="Usage:
     $USAGE1
@@ -35,16 +36,21 @@ HELP_TEXT="
 
         The following flags are supported:
 
-        -u|--user=user:group
+        -u|--user=user:grp
             If given, the username:groupname or uid:gid that the client will
             use. Default is $DEFAULT_USER.
 
-        -s|--server=name
+        -s|--server=svcont
             The name to assign to the SFTP server container; if not given,
             \"${DEFAULT_CONT}\" is used.
 
         -n|--network=network
             The name of the network to use. Default is \"<container>_net\".
+
+        -p|--package=clientpackage
+            The name of the client package. The client keys will be installed
+            under /run/secrets/<package>/client/test. Default is
+            \"sftp-server\".
 
         -h|--help
             Display help text and exit.
@@ -54,6 +60,7 @@ SFTP_CONT=$DEFAULT_CONT
 USER_ARG=$DEFAULT_USER
 NETWORK=
 SFTP_PORT=2222
+CLIENT_PACKAGE=sftp-server
 
 main () {
     processCommandLine "$@" || return 1
@@ -109,8 +116,8 @@ createStoppedSftpContainer () {
            --network ${network} \
            --tmpfs /tmp:rw,noexec,nosuid \
            -e "SERVICE=server" \
+           -e "CLIENT_PACKAGE=${CLIENT_PACKAGE}" \
            -e "RUN_ENV=test" \
-           -e "DATA_DIR=/mnt" \
            -e "ENTRYPOINT_DEBUG=0" \
            ncar/sftp-server:latest \
            /usr/sbin/sshd -D -e -p $SFTP_PORT
@@ -138,9 +145,9 @@ createKeyPairsUnderMnt () {
     docker run --rm \
        --volumes-from ${container} \
        -u ${usergrp} \
+       -e "PACKAGE=${CLIENT_PACKAGE}" \
        -e "SERVICE=client" \
        -e "RUN_ENV=test" \
-       -e "DATA_DIR=/mnt" \
        --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
        ncar/sftp-server:latest \
        /usr/local/sftp-server/sbin/ssh-keysync || return 1
@@ -150,7 +157,6 @@ createKeyPairsUnderMnt () {
            --volumes-from ${container} \
            -e "SERVICE=server" \
            -e "RUN_ENV=test" \
-           -e "DATA_DIR=/mnt" \
            --tmpfs /tmp:rw,noexec,nosuid \
            --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
            ncar/sftp-server:latest \
@@ -187,7 +193,7 @@ DESCRIPTION$HELP_TEXT
 EOF
                 return 1 ;;
 
-            -[nus]?*)
+            -[usnp]?*)
                 opt=`expr "${arg}" : '\(-.\).*'`
                 rest=`expr "${arg}" : '-.\(.*\)'`
                 set : ${opt} "${rest}" "$@"
@@ -209,6 +215,10 @@ EOF
             
             -n|--network)
                 NETWORK="$1"
+                shift ;;
+            
+            -p|--package)
+                CLIENT_PACKAGE="$1"
                 shift ;;
             
             -*)

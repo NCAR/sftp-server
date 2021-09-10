@@ -14,7 +14,7 @@ services:
         target: /usr/local/sweet
       - type: volume
         source: testdata
-        target: ${DATA_DIR}
+        target: /mnt
       - type: bind
         read_only: "true"
         source: ${LOCAL_SECRETS}
@@ -42,7 +42,7 @@ services:
         target: /usr/local/sweet
       - type: volume
         source: testdata
-        target: ${DATA_DIR}
+        target: /mnt
       - type: bind
         read_only: "true"
         source: ${LOCAL_SECRETS}
@@ -53,6 +53,7 @@ services:
       SERVICE: client
       RUN_ENV: dev
       SFTP_SERVER: server
+      SFTP_DATA: /mnt
       INTERACTIVE: ${INTERACTIVE}
       ENTRYPOINT_DEBUG: 0
     networks:
@@ -65,7 +66,7 @@ services:
     volumes:
       - type: bind
         source: ${LOCAL_SECRETS}
-        target: ${DATA_DIR}
+        target: /mnt
     environment:
       SERVICE: server
       RUN_ENV: dev
@@ -80,34 +81,12 @@ services:
     volumes:
       - type: bind
         source: ${LOCAL_SECRETS}
-        target: ${DATA_DIR}
+        target: /mnt
     environment:
       SERVICE: client
       RUN_ENV: dev
       ENTRYPOINT_DEBUG:
     profiles: [ "reset-keys" ]
-
-  gendoc:
-    image: ncar/sftp-server:latest
-    command: [ "/usr/local/sweet/sbin/gendoc","-v","${DATA_DIR}/wiki","." ]
-    volumes:
-      - type: bind
-        read_only: "true"
-        source: ${LOCAL_SECRETS}
-        target: ${SECRETS_VOL}
-      - type: bind
-        source: /tmp
-        target: ${DATA_DIR}
-      - type: tmpfs
-        target: /tmp
-    environment:
-      SERVICE: sweet-pl5
-      RUN_ENV: dev
-      COMPOSE_PROFILES: ${COMPOSE_PROFILES}
-      SFTP_SERVER: sftpd
-      INTERACTIVE: 0
-      ENTRYPOINT_DEBUG: 1
-    profiles: [ "test" ]
 
 volumes:
   testdata:

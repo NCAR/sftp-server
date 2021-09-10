@@ -10,6 +10,6 @@ runtests
 rc=$?
 
 echo "Shutting down ${SFTP_SERVER}:${SFTP_PORT}..."
-ssh -i $ID_RSA -p ${SFTP_PORT} ${SFTP_USER}@${SFTP_SERVER} shutdown
+ssh -i $ID_RSA -p ${SFTP_PORT} ${SFTPUSER}@${SFTP_SERVER} shutdown
 
 exit $rc

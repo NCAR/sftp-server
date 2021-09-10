@@ -12,22 +12,17 @@ HELP_TEXT="
         it is anything else, it should (re)generate the client keys. Keypairs
         will be written to
 
-          \${DATA_DIR}/\${PACKAGE}/\${SERVICE}/\${RUN_ENV}
+          /mnt/\${PACKAGE}/\${SERVICE}/\${RUN_ENV}
 
         while the authorized_keys and known_hosts files will be written to
 
-          \${DATA_DIR}/\${PACKAGE}/\${RUN_ENV}
+          /mnt/\${PACKAGE}/\${RUN_ENV}
 
-        with the expectation that the volume mounted to \$DATA_DIR will
+        with the expectation that the volume mounted to /mnt will
         be used subsequently as \$SECRETS_VOL in other containers.
 
         If the -h|--help option is given, the script will display help
         text and quit.
-
-ENVIRONMENT
-        DATA_DIR
-            Application data volume mount-point. The permissions on this
-            directory should be 1777.
 
 "
 
@@ -63,7 +58,7 @@ if [ $? != 0 ] ; then
 fi
 
 finally=:
-for envvar in DATA_DIR PACKAGE SERVICE RUN_ENV ; do
+for envvar in PACKAGE SERVICE RUN_ENV ; do
     eval val="\"\${$envvar}\""
     if [ ":${val}" = ":" ] ; then
        echo "$PROG: environment variable $envvar is not set" >&2
@@ -72,14 +67,14 @@ for envvar in DATA_DIR PACKAGE SERVICE RUN_ENV ; do
 done
 eval $finally
 
-if [ ! -w "${DATA_DIR}" ] ; then
-    echo "$PROG: ${DATA_DIR} (\$DATA_DIR\) must be writable" >&2
+if [ ! -w /mnt ] ; then
+    echo "$PROG: /mnt must be writable" >&2
     exit 1
 fi
 
 
-KEY_DIR="${DATA_DIR}/${PACKAGE}/${SERVICE}/${RUN_ENV}"
-SHARED_DIR="${DATA_DIR}/${PACKAGE}/${RUN_ENV}"
+KEY_DIR="/mnt/${PACKAGE}/${SERVICE}/${RUN_ENV}"
+SHARED_DIR="/mnt/${PACKAGE}/${RUN_ENV}"
 AUTH_KEYS=${SHARED_DIR}/authorized_keys
 KNOWN_HOST_KEYS=${SHARED_DIR}/known_host_keys
 
@@ -94,7 +89,7 @@ done
 
 if [ ${role} = "server" ] ; then
     echo "${role}: Creating key directories"
-    mkdir-config-tree ${DATA_DIR} || exit 1
+    mkdir-config-tree /mnt || exit 1
 
     echo "${role}: Clean up previous keys"
     rm -f ${KEY_DIR}/ssh_host_*_key* || exit 1
@@ -106,7 +101,7 @@ if [ ${role} = "server" ] ; then
     
 else
     echo "${role}: Creating key directories"
-    mkdir-config-tree ${DATA_DIR} || exit 1
+    mkdir-config-tree /mnt || exit 1
 
     echo "${role}: Clean up previous state"
     rm -f ${KEY_DIR}/*-id_* || exit 1

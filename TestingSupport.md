@@ -13,7 +13,7 @@ services (started by `docker-compose up`) are "server" and "client".
 
 The "server" service runs as user:group `sftp:sftp`, while the "client" service
 runs as user:group `sweetuser:sftp`; because the client runs under the `sftp`
-group, it can write directly to the mounted $DATA_DIR directory.
+group, it can write directly to the mounted $SFTP_DATA (/mnt) directory.
 
 ### Creating SSH Keypairs
 
@@ -125,6 +125,6 @@ suite:
         sleep $i
     done
     cat $logdir/test-server.log
-    ./run-test-client
+    ./run-test-client tbin/run-sftp-tests
 
 

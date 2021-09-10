@@ -7,21 +7,33 @@ ls -la ${SECRETS_DIR}
 df
 
 #
-# Keys should have been injected into $SECRETS_DIR.
+# Keys should have been injected into $SECRETS_VOL and the user's keys copied
+# to $SECRETS_DIR.
 #
 wait-for-files -v --wait=0 "${SECRETS_DIR}/*-id_*.pub" || exit 1
 
-if [ -f ${SECRETS_DIR}/known_host_keys ] && [ ":${SFTP_SERVER}" != ":" ] ; then
-    if [ ! -f ${SECRETS_DIR}/known_hosts ] ||
-       [ ${SECRETS_DIR}/known_hosts -ot ${SECRETS_DIR}/known_host_keys ] ; then
+KNOWN_HOSTS_DIR=${SECRETS_VOL}/sftp-server/${RUN_ENV}
+if [ -f ${KNOWN_HOSTS_DIR}/known_host_keys ] && [ ":${SFTP_SERVER}" != ":" ]
+then
+    if [ ! -f ${KNOWN_HOSTS_DIR}/known_hosts ] ||
+       [ ${KNOWN_HOSTS_DIR}/known_hosts -ot ${KNOWN_HOSTS_DIR}/known_host_keys ]
+    then
         ip=`dig ${SFTP_SERVER} +short`
-        sed "s/^/${SFTP_SERVER},${ip} /" ${SECRETS_DIR}/known_host_keys \
-            > ${SECRETS_DIR}/known_hosts
+        if [ ":${SFTP_PORT}" != ":" ] && [ ":${SFTP_PORT}" != ":22" ] ; then
+            name="[${SFTP_SERVER}]:${SFTP_PORT}"
+            addr="[${ip}]:${SFTP_PORT}"
+        else
+            name="${SFTP_SERVER}"
+            addr="${ip}";
+        fi
+        sed "s/^\([^ ]*\) *\([^ ]*\).*/${name},${addr} \1 \2/" \
+            ${KNOWN_HOSTS_DIR}/known_host_keys > ${KNOWN_HOSTS_DIR}/known_hosts
     fi
 fi
 if [ ! -f ${HOME}/.ssh/known_hosts ] ; then
     mkdir -p ${HOME}/.ssh
-    ln -s ${SECRETS_DIR}/known_hosts ${HOME}/.ssh/known_hosts
+    cp ${KNOWN_HOSTS_DIR}/known_hosts ${HOME}/.ssh/known_hosts
+    ssh-keygen -Hf ${HOME}/.ssh/known_hosts
 fi
 
 make-ssh-key-parms
