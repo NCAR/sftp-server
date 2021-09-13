@@ -9,44 +9,44 @@ if truthy $ENTRYPOINT_DEBUG ; then
    df
 fi
 
-#
-# Keys should have been injected into $SECRETS_VOL and the user's keys copied
-# to $SECRETS_DIR.
-#
-wait-for-files -v --wait=0 "${SECRETS_DIR}/*-id_*.pub" || exit 1
-
-KNOWN_HOSTS_DIR=${SECRETS_VOL}/sftp-server/${RUN_ENV}
-if [ -f ${KNOWN_HOSTS_DIR}/known_host_keys ] && [ ":${SFTP_SERVER}" != ":" ]
-then
-    if [ ! -f ${KNOWN_HOSTS_DIR}/known_hosts ] ||
-       [ ${KNOWN_HOSTS_DIR}/known_hosts -ot ${KNOWN_HOSTS_DIR}/known_host_keys ]
-    then
-        ip=`dig ${SFTP_SERVER} +short`
-        if [ ":${SFTP_PORT}" != ":" ] && [ ":${SFTP_PORT}" != ":22" ] ; then
-            name="[${SFTP_SERVER}]:${SFTP_PORT}"
-            addr="[${ip}]:${SFTP_PORT}"
-        else
-            name="${SFTP_SERVER}"
-            addr="${ip}";
-        fi
-        mkdir -p ${HOME}/.ssh
-        sed "s/^\([^ ]*\) *\([^ ]*\).*/${name},${addr} \1 \2/" \
-            ${KNOWN_HOSTS_DIR}/known_host_keys > ${HOME}/.ssh/known_hosts.gen
-    fi
-fi
-if [ ! -f ${HOME}/.ssh/known_hosts ] ; then
-    if [ -f ${HOME}/.ssh/known_hosts.gen ] ; then
-        cp ${HOME}/.ssh/known_hosts.gen ${HOME}/.ssh/known_hosts
-    elif [ -f ${KNOWN_HOSTS_DIR}/known_hosts ] ; then
-        cp ${KNOWN_HOSTS_DIR}/known_hosts ${HOME}/.ssh/known_hosts
-    fi
-    if [ -f ${HOME}/.ssh/known_hosts ] ; then
-        ssh-keygen -Hf ${HOME}/.ssh/known_hosts
-    fi
-fi
-
-make-ssh-key-parms
 if [ ":${SFTP_SERVER}" != ":" ] ; then
+   #
+   # Keys should have been injected into $SECRETS_VOL and the user's keys
+   # copied to $SECRETS_DIR.
+   #
+   wait-for-files -v --wait=0 "${SECRETS_DIR}/*-id_*.pub" || exit 1
+
+   KNOWN_HOSTS_DIR=${SECRETS_VOL}/sftp-server/${RUN_ENV}
+   if [ -f ${KNOWN_HOSTS_DIR}/known_host_keys ] && [ ":${SFTP_SERVER}" != ":" ]
+   then
+       if [ ! -f ${KNOWN_HOSTS_DIR}/known_hosts ] ||
+          [ ${KNOWN_HOSTS_DIR}/known_hosts -ot ${KNOWN_HOSTS_DIR}/known_host_keys ]
+       then
+           ip=`dig ${SFTP_SERVER} +short`
+           if [ ":${SFTP_PORT}" != ":" ] && [ ":${SFTP_PORT}" != ":22" ] ; then
+               name="[${SFTP_SERVER}]:${SFTP_PORT}"
+               addr="[${ip}]:${SFTP_PORT}"
+           else
+               name="${SFTP_SERVER}"
+               addr="${ip}";
+           fi
+           mkdir -p ${HOME}/.ssh
+           sed "s/^\([^ ]*\) *\([^ ]*\).*/${name},${addr} \1 \2/" \
+               ${KNOWN_HOSTS_DIR}/known_host_keys > ${HOME}/.ssh/known_hosts.gen
+       fi
+   fi
+   if [ ! -f ${HOME}/.ssh/known_hosts ] ; then
+       if [ -f ${HOME}/.ssh/known_hosts.gen ] ; then
+           cp ${HOME}/.ssh/known_hosts.gen ${HOME}/.ssh/known_hosts
+       elif [ -f ${KNOWN_HOSTS_DIR}/known_hosts ] ; then
+           cp ${KNOWN_HOSTS_DIR}/known_hosts ${HOME}/.ssh/known_hosts
+       fi
+       if [ -f ${HOME}/.ssh/known_hosts ] ; then
+           ssh-keygen -Hf ${HOME}/.ssh/known_hosts
+       fi
+   fi
+
+   make-ssh-key-parms
    SFTP_PORT=${SFTP_PORT:-22}
    SFTP="${SFTP_SERVER}:${SFTP_PORT}"
    parmdb set SFTP_SERVER "${SFTP_SERVER}"
