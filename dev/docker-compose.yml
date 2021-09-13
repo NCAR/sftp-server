@@ -50,9 +50,9 @@ services:
       - type: tmpfs
         target: /tmp
     environment:
+      SFTP_CLIENT: 1
       SERVICE: client
       RUN_ENV: dev
-      SFTP_SERVER: server
       SFTP_SERVER: server
       SFTP_DATA: /mnt
       INTERACTIVE: ${INTERACTIVE}

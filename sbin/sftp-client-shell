@@ -9,8 +9,8 @@ HELP_TEXT="
         that tests connectivity to a \"sftp-server\" container.
  
         The container must source \"sftp-cl-entrypoint.rc\" as part of its
-        ENTRYPOINT, and the SFTP_SERVER environment variable must be set to
-        the name of the sftp server host/container.
+        ENTRYPOINT.  The SFTP_SERVER environment variable should be set to
+        the name of the SFTP server host/container.
 
         If no arguments are provided and the INTERACTIVE environment variable
         has a \"truthy\" value, this script assumes it is being run from docker
@@ -31,12 +31,24 @@ HELP_TEXT="
         
 "
 HELP_ENVIRONMENT="
+        INTERACTIVE
+            If truthy, an indication that the script was started by
+            docker-compose, and that it should loop indefinitely so that
+            \"docker exec\" can be used to access the container interactively.
+
+        SFTP_CLIENT
+            If truthy, an indication that an SFTP server is required.
+
         SFTP_SERVER
             The name/address of the SFTP server. Should be set
             automatically.
 
         SFTP_PORT
             The SFTP network port. If not defined, 22 is used.
+
+        SFTP
+            If SFTP_SERVER is set, the value \"\${SFTP_SERVER}:\${SFTP_PORT}\".
+            This can be passed as an argument to the \"check-server\" script.
 
         SFTP_SERVER_IS_UP
             Set to \"yes\" by this script if and only if it detects that the
@@ -56,26 +68,36 @@ DESCRIPTION$HELP_TEXT
 EOF
         exit 0 ;;
 esac
+
 if [ ":${SFTP_SERVER}" = ":" ] ; then
-    echo "$PROG: SFTP_SERVER environment variable is not set" >&2
-    exit 1
-fi
-SFTP_PORT=${SFTP_PORT:-22}
-export SFTP_PORT
-
-SERVER="${SFTP_SERVER}:${SFTP_PORT}"
-
-echo "Waiting for \"${SERVER}\"..."
-check-server --wait=60 ${SERVER}
-rc=$?
-if [ $rc = 0 ] ; then
-    echo "\"${SERVER}\" is ready" >&2
-    SFTP_SERVER_IS_UP=yes
-    export SFTP_SERVER_IS_UP=yes
-elif [ $rc = 1 ] ; then
-    echo "\"${SERVER}\" timed out" >&2
-    exit 1
+    if truthy "${SFTP_CLIENT}" ; then
+        echo "$PROG: SFTP_SERVER environment variable is not set" >&2
+        exit 1
+    fi
 else
+    echo "Waiting for \"${SFTP}\"..."
+    check-server --wait=60 ${SFTP}
+    rc=$?
+    if [ $rc = 0 ] ; then
+        echo "\"${SFTP}\" is ready" >&2
+        SFTP_SERVER_IS_UP=yes
+    elif [ $rc = 1 ] ; then
+        echo "\"${SFTP}\" timed out" >&2
+        SFTP_SERVER_IS_UP=no
+    else
+        exit 1
+    fi
+fi
+export SFTP_SERVER_IS_UP
+
+if truthy "${INTERACTIVE}" ; then        
+    echo "Waiting indefinitely (use 'docker exec')..." >&2
+    while true ; do
+        sleep 60 ;
+    done
+    exit 0
+fi
+if truthy "${SFTP_CLIENT}" && truthy -n "${SFTP_SERVER_IS_UP}" ; then
     exit 1
 fi
 
@@ -83,13 +105,7 @@ if [ $# != 0 ] ; then
     "$@"
     exit $?
 fi
-if truthy "${INTERACTIVE}" ; then
-    echo "Waiting indefinitely (use 'docker exec')..." >&2
-    while true ; do
-        sleep 60 ;
-    done
-    exit 0
-fi
+
 if [ -t 0 ] ; then
     exec /bin/bash -i
 else

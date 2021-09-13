@@ -46,5 +46,13 @@ if [ ! -f ${HOME}/.ssh/known_hosts ] ; then
 fi
 
 make-ssh-key-parms
+if [ ":${SFTP_SERVER}" != ":" ] ; then
+   SFTP_PORT=${SFTP_PORT:-22}
+   SFTP="${SFTP_SERVER}:${SFTP_PORT}"
+   parmdb set SFTP_SERVER "${SFTP_SERVER}"
+   parmdb set SFTP_PORT "${SFTP_PORT}"
+   parmdb set SFTP "${SFTP}"
+   parmdb set SFTP_CLIENT "${SFTP_CLIENT}"
+fi
 eval `parmdb list --verbose | grep -v '^#'`
 export `parmdb list`

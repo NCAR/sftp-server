@@ -57,6 +57,9 @@ ENVIRONMENT_HELP="
         The following special environment variables are all set automatically
         in the client container:
 
+        SFTP_CLIENT
+            Set to 1.
+
         SFTP_PORT
             The SFTP server container network port to connect to.
 
@@ -154,6 +157,7 @@ runCommand () {
            --volumes-from ${container} \
            --tmpfs /tmp:rw,noexec,nosuid \
            -u ${userArg} \
+           -e "SFTP_CLIENT=1" \
            -e "SERVICE=client" \
            -e "RUN_ENV=test" \
            -e "SFTP_SERVER=${container}" \
