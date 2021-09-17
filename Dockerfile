@@ -42,7 +42,7 @@ ENV SFTPUSER=${SFTPUSER} \
 COPY sbin ${PACKAGE_DIR}/sbin/
 COPY tbin ${PACKAGE_DIR}/tbin/
 COPY rshbin ${PACKAGE_DIR}/rshbin/
-COPY TestingSupport.md gendoc-src ${PACKAGE_DIR}/
+COPY Intro.md TestingSupport.md gendoc-src ${PACKAGE_DIR}/
 
 RUN set -xe ; \
     make-local-links ${PACKAGE_DIR} /usr/local ; \
