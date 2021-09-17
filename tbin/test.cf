@@ -1,0 +1,3 @@
++ test-make-ssh-key-parms\.sh
++ test-ssh-key-init\.sh
++ test-connect\.sh

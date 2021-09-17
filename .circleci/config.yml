@@ -16,7 +16,6 @@ jobs:
       - run:
           name: "Build container"
           command: |
-              set +e
               git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git $HOME/sweet
               $HOME/sweet/docker-build --show
 
@@ -25,7 +24,7 @@ jobs:
           command: |
               cd sbin
               nohup ./run-test-server </dev/null >../../test-server.log 2>&1 &
-              for i in 1 2 2 3 5 8 13 21 ; do
+              for i in 5 5 5 5 5 5 ; do
                   if grep -q 'Server listening ' ../../test-server.log ; then
                       break
                   fi
@@ -45,7 +44,6 @@ jobs:
       - run:
           name: "Build and Tag Container"
           command: |
-              set +e
               git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git $HOME/sweet
               $HOME/sweet/docker-build --version=$CIRCLE_TAG
 
@@ -54,7 +52,7 @@ jobs:
           command: |
               cd sbin
               nohup ./run-test-server </dev/null >../../test-server.log 2>&1 &
-              for i in 1 2 2 3 5 8 13 21 ; do
+              for i in 5 5 5 5 5 5 ; do
                   if grep -q 'Server listening ' ../../test-server.log ; then
                       break
                   fi
@@ -72,7 +70,6 @@ jobs:
       - run:
           name: "Merge and Push Wiki Documentation"
           command: |
-              set +e
               git config --global user.email "${GH_USER_EMAIL}"
               git config --global user.name "${GH_USER_NAME}"
               REPO=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME

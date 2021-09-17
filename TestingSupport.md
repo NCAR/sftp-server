@@ -72,13 +72,6 @@ environment variables:
     Connected to sftp@server.
     sftp> 
 
-### Running Client Tests in Batch Mode
-
-If you just want to run the test scripts, you can use the following `rundev`
-command:
-
-    host$ INTERACTIVE=0 rundev --logs client
-
 ## Running Tests Without docker-compose
 
 If you don't want or need to use the docker-compose `dev` environment, you
