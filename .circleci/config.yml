@@ -20,6 +20,11 @@ jobs:
               SDIR=$HOME/sweet
               git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git ${SDIR}
               SVERS=`${SDIR}/sbin/show-git-version -r ${SDIR}`
+              if [ ":${SVERS}" = ":" ] ; then
+                  echo "unable to determine SWEET version" >&2
+                  exit 1
+              fi
+              echo SWEET_VERSION=$SVERS
               ${SDIR}/docker-build --show --build-arg SWEET_QUALIFIER=:${SVERS}
 
       - run:
@@ -32,21 +37,11 @@ jobs:
       - run:
           name: "Verify Doc Generation"
           command: |
-              set +e
               CIRCLE_TAG=0.0.0
-              git config --global user.email "${GH_USER_EMAIL}"
-              git config --global user.name "${GH_USER_NAME}"
               REPO=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
               export REPO
-              git clone https://${GH_TOKEN}@github.com/$REPO.wiki.git $HOME/gendocs
-              docker run --rm --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server /bin/bash -c 'ls -lR /usr/local/sweet ; cat /usr/local/sweet/VERSION'
               docker create --name docgenerator --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server /usr/local/sweet/bin/gendoc -b $CIRCLE_TAG -w /var/data/wiki -v
-              docker cp $HOME/gendocs/. docgenerator:/var/data/wiki
               docker start -a docgenerator
-              docker cp docgenerator:/usr/local/sftp-server/gendoc/. $HOME/gendocs
-              cd $HOME/gendocs
-              git add .
-              git commit -m "Doc build for $CIRCLE_TAG"
 
   push:
     <<: *defaults
@@ -61,7 +56,12 @@ jobs:
           command: |
               SDIR=$HOME/sweet
               git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git ${SDIR}
-              SVERS=`$SDIR/sbin/show-git-version -r`
+              SVERS=`${SDIR}/sbin/show-git-version -r ${SDIR}`
+              if [ ":${SVERS}" = ":" ] ; then
+                  echo "unable to determine SWEET version" >&2
+                  exit 1
+              fi
+              echo SWEET_VERSION=$SVERS
               ${SDIR}/docker-build --pin-base --version=$CIRCLE_TAG --build-arg SWEET_QUALIFIER=:${SVERS}
 
       - run:
@@ -85,13 +85,13 @@ jobs:
               REPO=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
               export REPO
               git clone https://${GH_TOKEN}@github.com/$REPO.wiki.git $HOME/gendocs
-              docker create --name docgenerator --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server gendoc -w /var/data/wiki -v
+              docker create --name docgenerator --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server gendoc -b $CIRCLE_TAG -w /var/data/wiki -v
               docker cp $HOME/gendocs/. docgenerator:/var/data/wiki
               docker start -a docgenerator
               docker cp docgenerator:/usr/local/sftp-server/gendoc/. $HOME/gendocs
               cd $HOME/gendocs
               git add .
-              if git commit -m 'Latest doc build' ; then
+              if git commit -m "Doc build for $CIRCLE_TAG" ; then
                   git push
               fi
 
