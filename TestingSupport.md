@@ -101,23 +101,8 @@ By default, the server container is named `testsftp`, but an alternate name
 can be specified; the same name must be passed to both `run-test-server` and
 `run-test-client`. Both scripts will run their containers attached, so if
 you are running tests interactively, you will want to run the scripts in
-separate windows.
+separate windows. However, `run-test-server` can be made to run in background
+using the `-w|--wait` option.
 
-The following code adapted from the circleci test/build configuration
-demonstrates how to run the script from a single non-interactive shell. The
-`for` loop waits for a total of 10 seconds for the server to come up, and the
-`run-test-client` script will default to running the `NCAR/sftp-server` test
-suite:
-
-    cd sbin
-    nohup ./run-test-server </dev/null >$logdir/test-server.log 2>&1 &
-    for i in 2 2 2 2 2 ; do
-        if grep -q 'Server listening ' $logdir/test-server.log ; then
-            break
-        fi
-        sleep $i
-    done
-    cat $logdir/test-server.log
-    ./run-test-client tbin/run-sftp-tests
 
 

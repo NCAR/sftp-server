@@ -2,9 +2,12 @@
 #
 # Server container ENTRYPOINT rc script.
 #
-ls -la ${DATA_DIR}
-ls -la ${SECRETS_DIR}
-df
+if truthy $ENTRYPOINT_DEBUG ; then
+   set -x
+   ls -la ${DATA_DIR}
+   ls -la ${SECRETS_DIR}
+   df
+fi
 
 #
 # Keys should have been injected into $SECRETS_DIR.

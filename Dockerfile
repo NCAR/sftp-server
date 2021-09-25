@@ -1,4 +1,5 @@
-FROM ncar/sweet
+ARG SWEET_QUALIFIER=:latest
+FROM ncar/sweet${SWEET_QUALIFIER}
 
 RUN apt-get -y --allow-releaseinfo-change update && \
     apt-get -y install \
@@ -44,7 +45,7 @@ COPY tbin ${PACKAGE_DIR}/tbin/
 COPY rshbin ${PACKAGE_DIR}/rshbin/
 COPY Intro.md TestingSupport.md gendoc-src ${PACKAGE_DIR}/
 
-RUN set -xe ; \
+RUN set -e ; \
     make-local-links ${PACKAGE_DIR} /usr/local ; \
     sweet-build-init $SFTPUSERID ; \
     echo "/bin/false" >> /etc/shells ; \
@@ -62,7 +63,7 @@ RUN set -xe ; \
           ${PACKAGE_DIR}/rshbin/HELP \
           ${PACKAGE_DIR}/rshbin/shutdown \
                 /home/${SFTPUSER} ; \
-    cp /usr/local/sftp-server/rshbin/bashrc /home/${SFTPUSER}/.bashrc ; \
+    echo "PATH=/home/sftp export PATH" >> /home/${SFTPUSER}/.bashrc ; \
     rm -f /home/${SFTPUSER}/.bash_logout ; \
     mkdir -p /home/${SFTPUSER}/.ssh ; \
     chown ${SFTPUSER}:${SFTPGROUP} /home/${SFTPUSER}/.ssh ; \
@@ -89,8 +90,9 @@ RUN set -xe ; \
     rm /etc/ssh/ssh_host*_key* ; \
     sed -e '/module(load=.imklog.)/s/^/#/' \
          /etc/rsyslog.conf >/etc/rsyslog.conf.new ; \
-    mv /etc/rsyslog.conf.new /etc/rsyslog.conf ; \
-    cd $PACKAGE_DIR ; \
+    mv /etc/rsyslog.conf.new /etc/rsyslog.conf
+    
+RUN cd $PACKAGE_DIR ; \
     /usr/local/sweet/sbin/gendoc -v >gendoc/.log 2>&1 ; \
     chown -R $SFTPUSER:$SFTPGROUP gendoc
 

@@ -16,22 +16,36 @@ jobs:
       - run:
           name: "Build container"
           command: |
-              git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git $HOME/sweet
-              $HOME/sweet/docker-build --show
+              set +e
+              SDIR=$HOME/sweet
+              git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git ${SDIR}
+              SVERS=`$SDIR/sbin/get-git-version -r`
+              ${SDIR}/docker-build --show --build-arg SWEET_QUALIFIER=:${SVERS}
 
       - run:
           name: "Run tests"
           command: |
               cd sbin
-              nohup ./run-test-server </dev/null >../../test-server.log 2>&1 &
-              for i in 5 5 5 5 5 5 ; do
-                  if grep -q 'Server listening ' ../../test-server.log ; then
-                      break
-                  fi
-                  sleep $i
-              done
-              cat ../../test-server.log
+              ./run-test-server --wait=30
               ./run-test-client tbin/run-sftp-tests
+
+      - run:
+          name: "Verify Doc Generation"
+          command: |
+              set +e
+              CIRCLE_TAG=0.0.0
+              git config --global user.email "${GH_USER_EMAIL}"
+              git config --global user.name "${GH_USER_NAME}"
+              REPO=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+              export REPO
+              git clone https://${GH_TOKEN}@github.com/$REPO.wiki.git $HOME/gendocs
+              docker create --name docgenerator --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server gendoc -b $CIRCLE_TAG -w /var/data/wiki -v
+              docker cp $HOME/gendocs/. docgenerator:/var/data/wiki
+              docker start -a docgenerator
+              docker cp docgenerator:/usr/local/sftp-server/gendoc/. $HOME/gendocs
+              cd $HOME/gendocs
+              git add .
+              git commit -m 'Latest doc build'
 
   push:
     <<: *defaults
@@ -44,21 +58,16 @@ jobs:
       - run:
           name: "Build and Tag Container"
           command: |
-              git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git $HOME/sweet
-              $HOME/sweet/docker-build --version=$CIRCLE_TAG
+              SDIR=$HOME/sweet
+              git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git ${SDIR}
+              SVERS=`$SDIR/sbin/get-git-version -r`
+              ${SDIR}/docker-build --pin-base --version=$CIRCLE_TAG --build-arg SWEET_QUALIFIER=:${SVERS}
 
       - run:
           name: "Run tests"
           command: |
               cd sbin
-              nohup ./run-test-server </dev/null >../../test-server.log 2>&1 &
-              for i in 5 5 5 5 5 5 ; do
-                  if grep -q 'Server listening ' ../../test-server.log ; then
-                      break
-                  fi
-                  sleep $i
-              done
-              cat ../../test-server.log
+              ./run-test-server --wait=30
               ./run-test-client tbin/run-sftp-tests
 
       - run:
