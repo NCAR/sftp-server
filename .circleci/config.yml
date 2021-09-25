@@ -19,7 +19,7 @@ jobs:
               set +e
               SDIR=$HOME/sweet
               git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git ${SDIR}
-              SVERS=`$SDIR/sbin/show-git-version -r`
+              SVERS=`${SDIR}/sbin/show-git-version -r ${SDIR}`
               ${SDIR}/docker-build --show --build-arg SWEET_QUALIFIER=:${SVERS}
 
       - run:
