@@ -39,7 +39,7 @@ jobs:
               REPO=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
               export REPO
               git clone https://${GH_TOKEN}@github.com/$REPO.wiki.git $HOME/gendocs
-              docker run --rm --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server ls -l /usr/local
+              docker run --rm --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server /bin/bash -c 'ls -lR /usr/local/sweet ; cat /usr/local/sweet/VERSION'
               docker create --name docgenerator --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server /usr/local/sweet/bin/gendoc -b $CIRCLE_TAG -w /var/data/wiki -v
               docker cp $HOME/gendocs/. docgenerator:/var/data/wiki
               docker start -a docgenerator
