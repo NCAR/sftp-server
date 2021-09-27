@@ -16,7 +16,6 @@ jobs:
       - run:
           name: "Build container"
           command: |
-              set +e
               SDIR=$HOME/sweet
               git clone https://${GH_TOKEN}@github.com/NCAR/sweet.git ${SDIR}
               SVERS=`${SDIR}/sbin/show-git-version -r ${SDIR}`
@@ -38,8 +37,6 @@ jobs:
           name: "Verify Doc Generation"
           command: |
               CIRCLE_TAG=0.0.0
-              REPO=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
-              export REPO
               docker create --name docgenerator --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server /usr/local/sweet/bin/gendoc -b $CIRCLE_TAG -w /var/data/wiki -v
               docker start -a docgenerator
 
