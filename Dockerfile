@@ -43,7 +43,7 @@ ENV SFTPUSER=${SFTPUSER} \
 COPY sbin ${PACKAGE_DIR}/sbin/
 COPY tbin ${PACKAGE_DIR}/tbin/
 COPY rshbin ${PACKAGE_DIR}/rshbin/
-COPY Intro.md TestingSupport.md gendoc-src ${PACKAGE_DIR}/
+COPY Intro.md Testing-Support.md gendoc-src ${PACKAGE_DIR}/
 
 RUN set -e ; \
     make-local-links ${PACKAGE_DIR} /usr/local ; \
@@ -63,7 +63,7 @@ RUN set -e ; \
           ${PACKAGE_DIR}/rshbin/HELP \
           ${PACKAGE_DIR}/rshbin/shutdown \
                 /home/${SFTPUSER} ; \
-    echo "PATH=/home/sftp export PATH" >> /home/${SFTPUSER}/.bashrc ; \
+    cp ${PACKAGE_DIR}/rshbin/bashrc /home/${SFTPUSER}/.bashrc ; \
     rm -f /home/${SFTPUSER}/.bash_logout ; \
     mkdir -p /home/${SFTPUSER}/.ssh ; \
     chown ${SFTPUSER}:${SFTPGROUP} /home/${SFTPUSER}/.ssh ; \

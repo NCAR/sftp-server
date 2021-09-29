@@ -2,7 +2,7 @@
 PROG=run-test-client
 DESC="Run a client container counterpart to the run-test-server container"
 USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=svcont] [-n|--network=network]
-                 [-i|--image=clientimage] command..."
+                 [-i|--image=clientimage] [-d|--data=datacont] command..."
 USAGE2="$PROG -h|--help"
 USAGE="Usage:
     $USAGE1
@@ -52,6 +52,11 @@ HELP_TEXT="
         -i|--image=clientimage
             The name of the docker image to use for the client container.
             Default is \"${DEFAULT_IMAGE}\".
+
+        -d|--data=datacont
+            An optional container that defines the /var/data volume; the
+            \"docker create\" command for the client container will include
+            \"--volumes-from <datacont>\".
 "
 ENVIRONMENT_HELP="
         The following special environment variables are all set automatically
@@ -87,6 +92,7 @@ SCRIPTDIR=`cd \`dirname $0\`; pwd`
 
 SFTP_PORT=2222
 SFTP_CONT=$DEFAULT_CONT
+DATA_CONT=
 USER_ARG=$DEFAULT_USER
 INTERACTIVE=0
 NETWORK=
@@ -100,7 +106,7 @@ main () {
     
     checkServerContainer "${SFTP_CONT}" "${NETWORK}" || return 1
 
-    runCommand "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" "${IMAGE}" ${COMMAND}
+    runCommand "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" "${IMAGE}" "${DATA_CONT}" ${COMMAND}
 
 }
 
@@ -143,18 +149,24 @@ runCommand () {
     shift
     image="$1"
     shift
+    data_cont="$1"
+    shift
 
     itOpt=
     iOpt=
     if [ $# = 0 ] && [ -t 0 ] ; then
         itOpt="-it"
         iOpt="-i"
-    fi      
+    fi
+    data_cont_args=
+    if [ ":${data_cont}" != ":" ] ; then
+        data_cont_args="--volumes-from ${data_cont}"
+    fi
 
     echo "Creating test client for server container \"$container\"..."
     docker create $itOpt --rm --name ${container}_cl \
            --network ${network} \
-           --volumes-from ${container} \
+           --volumes-from ${container} ${data_cont_args} \
            --tmpfs /tmp:rw,noexec,nosuid \
            -u ${userArg} \
            -e "SFTP_CLIENT=1" \
@@ -197,7 +209,7 @@ ENVIRONMENT$ENVIRONMENT_HELP
 EOF
                 return 1 ;;
 
-            -[nusi]?*)
+            -[dnusi]?*)
                 opt=`expr "${arg}" : '\(-.\).*'`
                 rest=`expr "${arg}" : '-.\(.*\)'`
                 set : ${opt} "${rest}" "$@"
@@ -223,6 +235,10 @@ EOF
             
             -i|--image)
                 IMAGE="$1"
+                shift ;;
+            
+            -d|--data)
+                DATA_CONT="$1"
                 shift ;;
             
             -*)

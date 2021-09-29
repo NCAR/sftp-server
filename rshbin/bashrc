@@ -2,3 +2,9 @@ PARM_DB=/tmp/parmdb export PARM_DB
 eval `/usr/local/bin/parmdb list --verbose | /bin/grep -v '^#'`
 export `/usr/local/bin/parmdb list`
 PATH=/home/sftp export PATH
+
+# Note: default bashrc will return early if not running interactively
+. /etc/skel/.bashrc
+
+# reset PATH in case it changed
+PATH=/home/sftp export PATH
