@@ -107,5 +107,6 @@ EXPOSE 22
 
 VOLUME $SFTP_DATA
 VOLUME $SECRETS_VOL
+VOLUME $SFTP_DATA
 
 CMD [ "/usr/sbin/sshd", "-D", "-e" ]

@@ -12,7 +12,7 @@ The `dev/docker-compose.yml' file defines a number of services. The main
 services (started by `docker-compose up`) are "server" and "client".
 
 The "server" service runs as user:group `sftp:sftp`, while the "client" service
-runs as user:group `sweetuser:sftp`; because the client runs under the `sftp`
+
 group, it can write directly to the mounted $SFTP_DATA (/mnt) directory.
 
 ### Creating SSH Keypairs

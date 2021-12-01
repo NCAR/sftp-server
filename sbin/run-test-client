@@ -2,7 +2,7 @@
 PROG=run-test-client
 DESC="Run a client container counterpart to the run-test-server container"
 USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=svcont] [-n|--network=network]
-                 [-i|--image=clientimage] [-d|--data=datacont] command..."
+                 [-i|--image=clientimage] command..."
 USAGE2="$PROG -h|--help"
 USAGE="Usage:
     $USAGE1
@@ -15,7 +15,9 @@ DEFAULT_IMAGE=ncar/sftp-server:latest
 HELP_TEXT="
         Start a test SFTP client container that connects to a container
         started using run-test-server and runs the \"NCAR/sftp-server\" test
-        suite.
+        suite. The client container gets its volumes from the server container
+        (using the \"--volumes-from\" docker create option); the volumes include
+        \"/run/secrets\", \"/mnt\", and \"/var/data\".
 
         The client container uses the \"sftp-cl-entrypoint.rc\" as part of its
         ENTRYPOINT, and uses \"sbin/sftp-client-shell\" to run the final
@@ -53,10 +55,8 @@ HELP_TEXT="
             The name of the docker image to use for the client container.
             Default is \"${DEFAULT_IMAGE}\".
 
-        -d|--data=datacont
-            An optional container that defines the /var/data volume; the
-            \"docker create\" command for the client container will include
-            \"--volumes-from <datacont>\".
+        -d|--detach
+            If given, the container will run detached.
 "
 ENVIRONMENT_HELP="
         The following special environment variables are all set automatically
@@ -92,12 +92,13 @@ SCRIPTDIR=`cd \`dirname $0\`; pwd`
 
 SFTP_PORT=2222
 SFTP_CONT=$DEFAULT_CONT
-DATA_CONT=
 USER_ARG=$DEFAULT_USER
 INTERACTIVE=0
 NETWORK=
 IMAGE=$DEFAULT_IMAGE
 COMMAND=
+ENTRYPOINT_DEBUG=${ENTRYPOINT_DEBUG:-0}
+ATTACHED=-a
 
 main () {
     processCommandLine "$@"
@@ -106,7 +107,7 @@ main () {
     
     checkServerContainer "${SFTP_CONT}" "${NETWORK}" || return 1
 
-    runCommand "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" "${IMAGE}" "${DATA_CONT}" ${COMMAND}
+    runCommand "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" "${IMAGE}" ${COMMAND}
 
 }
 
@@ -149,24 +150,19 @@ runCommand () {
     shift
     image="$1"
     shift
-    data_cont="$1"
-    shift
 
     itOpt=
     iOpt=
     if [ $# = 0 ] && [ -t 0 ] ; then
         itOpt="-it"
         iOpt="-i"
-    fi
-    data_cont_args=
-    if [ ":${data_cont}" != ":" ] ; then
-        data_cont_args="--volumes-from ${data_cont}"
+        ATTACHED=-a
     fi
 
     echo "Creating test client for server container \"$container\"..."
     docker create $itOpt --rm --name ${container}_cl \
            --network ${network} \
-           --volumes-from ${container} ${data_cont_args} \
+           --volumes-from ${container} \
            --tmpfs /tmp:rw,noexec,nosuid \
            -u ${userArg} \
            -e "SFTP_CLIENT=1" \
@@ -175,7 +171,7 @@ runCommand () {
            -e "SFTP_SERVER=${container}" \
            -e "SFTP_PORT=${SFTP_PORT}" \
            -e "INTERACTIVE=$INTERACTIVE" \
-           -e "ENTRYPOINT_DEBUG=0" \
+           -e "ENTRYPOINT_DEBUG=${ENTRYPOINT_DEBUG}" \
            --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
            ${image} \
            --source=/usr/local/sftp-server/sbin/sftp-cl-entrypoint.rc \
@@ -185,7 +181,7 @@ runCommand () {
     echo "Using network \"${clnet}\""
 
     echo "Starting container \"${container}_cl\"..."
-    docker start -a $iOpt ${container}_cl
+    docker start ${ATTACHED} $iOpt ${container}_cl
 }
 
 
@@ -209,7 +205,13 @@ ENVIRONMENT$ENVIRONMENT_HELP
 EOF
                 return 1 ;;
 
-            -[dnusi]?*)
+            -d?*)
+                opt=`expr "${arg}" : '\(-.\).*'`
+                rest=`expr "${arg}" : '-.\(.*\)'`
+                set : ${opt} "-${rest}" "$@"
+                shift ;;
+
+            -[nusi]?*)
                 opt=`expr "${arg}" : '\(-.\).*'`
                 rest=`expr "${arg}" : '-.\(.*\)'`
                 set : ${opt} "${rest}" "$@"
@@ -237,8 +239,8 @@ EOF
                 IMAGE="$1"
                 shift ;;
             
-            -d|--data)
-                DATA_CONT="$1"
+            -d|--detach)
+                ATTACHED=
                 shift ;;
             
             -*)

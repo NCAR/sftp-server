@@ -3,7 +3,9 @@
 # Server container ENTRYPOINT rc script.
 #
 if truthy $ENTRYPOINT_DEBUG ; then
+   package=`parmdb get PACKAGE`
    set -x
+   ls -la ${SECRETS_VOL}/${package}/${SERVICE}/${RUN_ENV}
    ls -la ${DATA_DIR}
    ls -la ${SECRETS_DIR}
    df

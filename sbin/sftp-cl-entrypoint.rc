@@ -3,7 +3,9 @@
 # Client container ENTRYPOINT rc script.
 #
 if truthy $ENTRYPOINT_DEBUG ; then
+   package=`parmdb get PACKAGE`
    set -x
+   ls -la ${SECRETS_VOL}/${package}/${SERVICE}/${RUN_ENV}
    ls -la ${DATA_DIR}
    ls -la ${SECRETS_DIR}
    df
@@ -37,8 +39,10 @@ if [ ":${SFTP_SERVER}" != ":" ] ; then
    fi
    if [ ! -f ${HOME}/.ssh/known_hosts ] ; then
        if [ -f ${HOME}/.ssh/known_hosts.gen ] ; then
+           rm -f ${HOME}/.ssh/known_hosts
            cp ${HOME}/.ssh/known_hosts.gen ${HOME}/.ssh/known_hosts
        elif [ -f ${KNOWN_HOSTS_DIR}/known_hosts ] ; then
+           rm -f ${HOME}/.ssh/known_hosts
            cp ${KNOWN_HOSTS_DIR}/known_hosts ${HOME}/.ssh/known_hosts
        fi
        if [ -f ${HOME}/.ssh/known_hosts ] ; then

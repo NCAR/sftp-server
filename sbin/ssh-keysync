@@ -78,7 +78,7 @@ SHARED_DIR="/mnt/${PACKAGE}/${RUN_ENV}"
 AUTH_KEYS=${SHARED_DIR}/authorized_keys
 KNOWN_HOST_KEYS=${SHARED_DIR}/known_host_keys
 
-EXECUSER=`id -un`
+EXECUSER=`id -un 2>/dev/null` # can run with numeric uid set to "non-user"
 role=client
 for svu in ${SERVER_USERS} ; do
     if [ ":${EXECUSER}" = ":${svu}" ] ; then
@@ -95,7 +95,7 @@ if [ ${role} = "server" ] ; then
     rm -f ${KEY_DIR}/ssh_host_*_key* || exit 1
     rm -f ${KNOWN_HOST_KEYS} || exit 1
 
-    echo "${role}: Create keys"
+    echo "${role}: Create keys in ${KEY_DIR}"
     ssh-key-init --server --known-host-keys=${KNOWN_HOST_KEYS} ${KEY_DIR} || exit 1
     echo "${role}: Done"
     
@@ -107,7 +107,7 @@ else
     rm -f ${KEY_DIR}/*-id_* || exit 1
     rm -f ${AUTH_KEYS} || exit 1
 
-    echo "${role}: Create keys"
+    echo "${role}: Create keys in ${KEY_DIR}"
     ssh-key-init --client=${EXECUSER} --auth-keys=${AUTH_KEYS} ${KEY_DIR}
 
     echo "${role}: Done"

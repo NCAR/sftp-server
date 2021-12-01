@@ -2,7 +2,7 @@
 PROG=run-test-server
 DESC="Start a test SFTP server container with temporary keys"
 USAGE1="$PROG [-u|--user=user:grp] [-s|--server=svcont] [-n|--network=network]
-                 [-p|--package=clientpackage]"
+                 [-i|--image=clientimage]"
 USAGE2="$PROG [-h|--help]"
 USAGE="Usage:
     $USAGE1
@@ -24,11 +24,12 @@ HELP_TEXT="
         A client container can access the generated keys if the
         \"--volumes-from <containername>\" argument is included in the
         \"docker run\" command. Specifically, the volumes shared from
-        the server container include \"/run/secrets\", and \"/mnt\"; the
-        former contains the shared keys, and the later is the volume that
-        SFTP will serve: this allows a client to bypass the SFTP interface to
-        either seed the data that can be downloaded or verify data that is
-        uploaded. See \"run-test-client\".
+        the server container include \"/run/secrets\" (which contains shared
+        keys), \"/mnt\" (which is the volume that SFTP will serve), and
+        \"/var/data\" (which is not used by the sftp server, but is ofter used
+        by other containers). Note that since \"/mnt\" is shared, a client can
+        bypass the SFTP interface to either seed the data that can be
+        downloaded or verify data that is uploaded. See \"run-test-client\".
 
         This script intentionally shuns volume mounts and docker-compose.
         It is designed for testing in remote CI environments (CircleCI in
@@ -47,10 +48,12 @@ HELP_TEXT="
         -n|--network=network
             The name of the network to use. Default is \"<container>_net\".
 
-        -p|--package=clientpackage
-            The name of the client package. The client keys will be installed
-            under /run/secrets/<package>/client/test. Default is
-            \"sftp-server\".
+        -i|--image=clientimage
+            The name of the docker image that will be used for the client
+            container. The image must either be based on \"ncar/sftp-server\",
+            or be based on \"ncar/sweet\" and have \"ncar/sftp-server\" scripts
+            installed under \"/usr/local/sftp-server\". Default is
+            \"ncar/sftp-server\"
 
         -w|--wait=secs
             Do not return until the server container is listening for
@@ -65,15 +68,19 @@ SFTP_CONT=$DEFAULT_CONT
 USER_ARG=$DEFAULT_USER
 NETWORK=
 SFTP_PORT=2222
-CLIENT_PACKAGE=sftp-server
+CLIENT_IMAGE=ncar/sftp-server
+CLIENT_PACKAGE=
 WAIT=
 TMPLOG=/tmp/run-test-server.$$.log
+ENTRYPOINT_DEBUG=${ENTRYPOINT_DEBUG:-0}
 
 main () {
     processCommandLine "$@" || return 1
 
     trap "rm -f ${TMPLOG} ; exit 255" 1 2 13 15
 
+    CLIENT_PACKAGE=`verifyClientImage ${CLIENT_IMAGE}` || return 1
+    
     setupNetwork ${NETWORK} || return
 
     removeExistingContainer ${SFTP_CONT} || return 1
@@ -112,6 +119,25 @@ main () {
     return $rc
 }
 
+verifyClientImage () {
+    image="$1"
+    sftp=`expr "${image}:" : '(ncar/sftp-server)[:@].*'`
+    if [ ":${sftp}" = ":ncar/sftp-server" ] ; then
+        return "sftp-server"
+    fi
+    package=`docker run --rm --entrypoint /bin/cat ${image} /etc/parmdb-init/PACKAGE 2>/dev/null`
+    if [ ":${package}" = ":" ] ; then
+        echo "$PROG: client image is not based on ncar/sweet" >&2
+        exit 1
+    fi
+    sftpdir=`docker run --rm --entrypoint /bin/ls ${image} -ld /usr/local/sftp-server 2>/dev/null`
+    if [ ":${sftpdir}" = ":" ] ; then
+        echo "$PROG: client image does not include sftp-server scripts" >&2
+        exit 1
+    fi
+    echo $package
+}
+
 setupNetwork () {
     network="$1"
     netinfo=`docker network inspect ${network} 2>/dev/null`
@@ -143,13 +169,13 @@ createStoppedSftpContainer () {
     trap "rm -f ${TMPLOG} ; docker rm -f ${container} >/dev/null 2>&1 ; exit 255" 1 2 13 15
     echo "Creating stopped container \"$container\""
     docker create --rm --name ${container} \
-           -v /run/secrets -v /mnt \
+           -v /run/secrets -v /mnt -v /var/data \
            --network ${network} \
            --tmpfs /tmp:rw,noexec,nosuid \
            -e "SERVICE=server" \
            -e "CLIENT_PACKAGE=${CLIENT_PACKAGE}" \
            -e "RUN_ENV=test" \
-           -e "ENTRYPOINT_DEBUG=0" \
+           -e "ENTRYPOINT_DEBUG=${ENTRYPOINT_DEBUG}" \
            ncar/sftp-server:latest \
            /usr/sbin/sshd -D -e -p $SFTP_PORT
 
@@ -172,7 +198,7 @@ createKeyPairsUnderMnt () {
     container="$1"
     usergrp="$2"
 
-    echo "Creating client keys"
+    echo "Creating client keys as ${usergrp}"
     docker run --rm \
        --volumes-from ${container} \
        -u ${usergrp} \
@@ -180,10 +206,10 @@ createKeyPairsUnderMnt () {
        -e "SERVICE=client" \
        -e "RUN_ENV=test" \
        --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
-       ncar/sftp-server:latest \
+       ${CLIENT_IMAGE} \
        /usr/local/sftp-server/sbin/ssh-keysync || return 1
 
-    echo "Creating server"
+    echo "Creating server keys as sftp:sftp"
     docker run --rm \
            --volumes-from ${container} \
            -e "SERVICE=server" \
@@ -224,7 +250,7 @@ DESCRIPTION$HELP_TEXT
 EOF
                 return 1 ;;
 
-            -[usnpw]?*)
+            -[usniw]?*)
                 opt=`expr "${arg}" : '\(-.\).*'`
                 rest=`expr "${arg}" : '-.\(.*\)'`
                 set : ${opt} "${rest}" "$@"
@@ -248,8 +274,8 @@ EOF
                 NETWORK="$1"
                 shift ;;
             
-            -p|--package)
-                CLIENT_PACKAGE="$1"
+            -i|--image)
+                CLIENT_IMAGE="$1"
                 shift ;;
             
             -w|--wait)
