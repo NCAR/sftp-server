@@ -76,11 +76,10 @@ environment variables:
 ## Running Tests Without docker-compose
 
 If you don't want or need to use the docker-compose `dev` environment, you
-can use the `.circleci/runtests.sh` script. Automated builds with CircleCI are
-configured to use this script. To run the script in CircleCI or otherwise, cd to
-the sftp-server main directory and run
+can use the `tbin/runtests.sh` script. To run the script, cd to the sftp-server
+main directory and run
 
-    $ ./.circleci/runtests.sh
+    $ ./tbin/runtests.sh
 
 This script runs two other scripts: `sbin/run-test-server` and
 `sbin/run-test-client`.
