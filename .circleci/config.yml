@@ -29,9 +29,7 @@ jobs:
       - run:
           name: "Run tests"
           command: |
-              cd sbin
-              ./run-test-server --wait=30
-              ./run-test-client tbin/run-sftp-tests
+              ./tbin/runtests.sh
 
       - run:
           name: "Verify Doc Generation"

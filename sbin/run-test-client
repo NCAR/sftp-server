@@ -1,8 +1,8 @@
 #!/bin/sh
 PROG=run-test-client
 DESC="Run a client container counterpart to the run-test-server container"
-USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=svcont] [-n|--network=network]
-                 [-i|--image=clientimage] command..."
+USAGE1="$PROG [-u|--user=uid:gid] [-s|--server=svcont] [-c|--client=clcont]
+                 [-n|--network=network] [-i|--image=clientimage] command..."
 USAGE2="$PROG -h|--help"
 USAGE="Usage:
     $USAGE1
@@ -57,6 +57,13 @@ HELP_TEXT="
 
         -d|--detach
             If given, the container will run detached.
+
+        --rm
+            If given, the container will removed when it stops.
+
+        -c|--client=clcont
+            If given, the name to assign to the client container. Default is
+            the server container name with \"_cl\" appended.
 "
 ENVIRONMENT_HELP="
         The following special environment variables are all set automatically
@@ -85,13 +92,20 @@ ENVIRONMENT_HELP="
         ID_RSA
         ID_ECDSA
              The paths to SSH identity files for the various key types.
-            
+
+        The following environment variables will be copied to the script's
+        environment to the client container environment:
+
+        STDOUT
+        STDERR
+             Names of standard output and erorr files.
 "
 
 SCRIPTDIR=`cd \`dirname $0\`; pwd`
 
 SFTP_PORT=2222
 SFTP_CONT=$DEFAULT_CONT
+CL_CONT=
 USER_ARG=$DEFAULT_USER
 INTERACTIVE=0
 NETWORK=
@@ -99,15 +113,19 @@ IMAGE=$DEFAULT_IMAGE
 COMMAND=
 ENTRYPOINT_DEBUG=${ENTRYPOINT_DEBUG:-0}
 ATTACHED=-a
+RM_ARG=
 
 main () {
     processCommandLine "$@"
 
+    if [ ":$CL_CONT" = ":" ] ; then
+        CL_CONT="${SFTP_CONT}_cl"
+    fi
     checkNetwork "${NETWORK}" || return 1
     
     checkServerContainer "${SFTP_CONT}" "${NETWORK}" || return 1
 
-    runCommand "${USER_ARG}" "${SFTP_CONT}" "${NETWORK}" "${IMAGE}" ${COMMAND}
+    runCommand "${USER_ARG}" "${SFTP_CONT}" "${CL_CONT}" "${NETWORK}" "${IMAGE}" ${COMMAND}
 
 }
 
@@ -146,6 +164,8 @@ runCommand () {
     shift
     container="$1"
     shift
+    cl_container="$1"
+    shift
     network="$1"
     shift
     image="$1"
@@ -159,12 +179,21 @@ runCommand () {
         ATTACHED=-a
     fi
 
+    STDOUT_ARG=
+    if [ ":${STDOUT}" != ":" ] ; then
+        STDOUT_ARG="-e STDOUT=${STDOUT}"
+    fi
+    STDERR_ARG=
+    if [ ":${STDERR}" != ":" ] ; then
+        STDERR_ARG="-e STDERR=${STDERR}"
+    fi
     echo "Creating test client for server container \"$container\"..."
-    docker create $itOpt --rm --name ${container}_cl \
+    docker create $itOpt $RM_ARG --name ${cl_container} \
            --network ${network} \
            --volumes-from ${container} \
            --tmpfs /tmp:rw,noexec,nosuid \
            -u ${userArg} \
+           ${STDOUT_ARG} ${STDERR_ARG} \
            -e "SFTP_CLIENT=1" \
            -e "SERVICE=client" \
            -e "RUN_ENV=test" \
@@ -176,12 +205,12 @@ runCommand () {
            ${image} \
            --source=/usr/local/sftp-server/sbin/sftp-cl-entrypoint.rc \
            /usr/local/sftp-server/sbin/sftp-client-shell "$@"
-    set : `docker inspect -f '{{range $key, $value := .NetworkSettings.Networks}}{{$key}} {{end}}' ${container}_cl`
+    set : `docker inspect -f '{{range $key, $value := .NetworkSettings.Networks}}{{$key}} {{end}}' ${cl_container}`
     clnet="$2"
     echo "Using network \"${clnet}\""
 
-    echo "Starting container \"${container}_cl\"..."
-    docker start ${ATTACHED} $iOpt ${container}_cl
+    echo "Starting container \"${cl_container}\"..."
+    docker start ${ATTACHED} $iOpt ${cl_container}
 }
 
 
@@ -211,7 +240,7 @@ EOF
                 set : ${opt} "-${rest}" "$@"
                 shift ;;
 
-            -[nusi]?*)
+            -[nusci]?*)
                 opt=`expr "${arg}" : '\(-.\).*'`
                 rest=`expr "${arg}" : '-.\(.*\)'`
                 set : ${opt} "${rest}" "$@"
@@ -231,6 +260,10 @@ EOF
                 SFTP_CONT="$1"
                 shift ;;
             
+            -c|--client)
+                CL_CONT="$1"
+                shift ;;
+            
             -n|--network)
                 NETWORK="$1"
                 shift ;;
@@ -240,8 +273,10 @@ EOF
                 shift ;;
             
             -d|--detach)
-                ATTACHED=
-                shift ;;
+                ATTACHED= ;;
+            
+            --rm)
+                RM_ARG=--rm ;;
             
             -*)
                 echo "$PROG: invalid option: $arg" >&2

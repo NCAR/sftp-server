@@ -13,7 +13,7 @@ DEFAULT_USER=sweetuser:sftp
 
 HELP_TEXT="
         Configure and start a test SFTP container with generated server- and
-        client-side keys.
+        client-side keys. It is meant to be used with run-test-client.
 
         The SFTP container is always assigned a name. The name can be given
         on the command line, but if it is not, \"$DEFAULT_CONT\" is used.
@@ -53,7 +53,9 @@ HELP_TEXT="
             container. The image must either be based on \"ncar/sftp-server\",
             or be based on \"ncar/sweet\" and have \"ncar/sftp-server\" scripts
             installed under \"/usr/local/sftp-server\". Default is
-            \"ncar/sftp-server\"
+            \"ncar/sftp-server\". Note that run-test-server will generate
+            client keys using this image, but you must use run-test-client
+            to run actual tests using the image.
 
         -w|--wait=secs
             Do not return until the server container is listening for

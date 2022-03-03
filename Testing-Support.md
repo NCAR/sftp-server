@@ -4,9 +4,10 @@ The sftp-server package supports automated testing. During development of
 the `NCAR/sftp-server` project, you can use services configured in the
 docker-compose `dev` directory. During automated builds and in testing for
 other projects that use an SFTP client, you can use the `sbin/run-test-server`
-`sbin/run-test-client` scripts.
+`sbin/run-test-client` scripts, or adapt `dev/docker-compose.yml` as
+appropriate.
 
-## Using docker-compose and the "dev" environment
+## Using docker-compose and the "dev" environment for self testing
 
 The `dev/docker-compose.yml' file defines a number of services. The main
 services (started by `docker-compose up`) are "server" and "client".
@@ -75,8 +76,14 @@ environment variables:
 ## Running Tests Without docker-compose
 
 If you don't want or need to use the docker-compose `dev` environment, you
-can use the `sbin/run-test-server` and `sbin/run-test-client` scripts. This
-is how automated builds with CircleCI are configured.
+can use the `.circleci/runtests.sh` script. Automated builds with CircleCI are
+configured to use this script. To run the script in CircleCI or otherwise, cd to
+the sftp-server main directory and run
+
+    $ ./.circleci/runtests.sh
+
+This script runs two other scripts: `sbin/run-test-server` and
+`sbin/run-test-client`.
 
 The `run-test-server` script will create and start a container running an SFTP
 server. It will generate temporary keypairs and store them `/run/secrets`, and
@@ -103,6 +110,131 @@ can be specified; the same name must be passed to both `run-test-server` and
 you are running tests interactively, you will want to run the scripts in
 separate windows. However, `run-test-server` can be made to run in background
 using the `-w|--wait` option.
+
+## Adapting dev/docker-compose.yml for other projects
+
+It is not difficult to set up an SFTP server instance in another project, but
+setting up keys and accounts can be confusing, particularly if the other project
+runs under a user account other than `sweetuser`.
+
+You can, of course, define your own static ssh keys in the other project, but
+you can also generate a keypair in the same way `sftp-server/dev/docker-compose`
+does. Just define client and server services like so:
+
+```
+  reset-server-keys:
+    image: ncar/sftp-server:latest
+    entrypoint: [ "/usr/local/sweet/sbin/sweet-entrypoint.sh" ]
+    command: [ "/usr/local/sftp-server/sbin/ssh-keysync" ]
+    volumes:
+      - type: bind
+        source: ${LOCAL_SECRETS}
+        target: /mnt
+    environment:
+      SERVICE: server
+      RUN_ENV: dev
+      ENTRYPOINT_DEBUG:
+    profiles: [ "reset-keys" ]
+
+  reset-client-keys:
+    image: ${OTHER_IMAGE}
+    user: ${OTHERUSER}:${$OTHERGROUP}
+    entrypoint: [ "/usr/local/sweet/sbin/sweet-entrypoint.sh" ]
+    command: [ "/usr/local/sftp-server/sbin/ssh-keysync" ]
+    volumes:
+      - type: bind
+        source: ${LOCAL_SECRETS}
+        target: /mnt
+    environment:
+      SERVICE: client
+      RUN_ENV: dev
+      ENTRYPOINT_DEBUG:
+    profiles: [ "reset-keys" ]
+
+```
+
+Substitute the name of your image and its user and group for the
+`${OTHER_IMAGE}`, `${OTHERUSER}`, and `${OTHERGROUP}` references.
+
+The `reset-client-keys` server should run first, then the `reset-server-keys`
+service.
+
+The corresponding `server` and `client` services should use the following basic
+setup:
+
+```
+  server:
+    image: ncar/sftp-server:latest
+    init: true
+    volumes:
+      - type: volume
+        source: testdata
+        target: /mnt
+      - type: bind
+        read_only: "true"
+        source: ${LOCAL_SECRETS}
+        target: ${SECRETS_VOL}
+      - type: tmpfs
+        target: /tmp
+    environment:
+      SERVICE: server
+      CLIENT_PACKAGE: ${OTHER_PACKAGE}
+      RUN_ENV: dev
+      ENTRYPOINT_DEBUG:
+    networks:
+      - sftp
+
+  client:
+    image: ${OTHER_IMAGE}
+    user: ${OTHERUSER}:${OTHERGROUP}
+    entrypoint: [ "/usr/local/sweet/sbin/sweet-entrypoint.sh", "--source=/usr/local/sftp-server/sbin/sftp-cl-entrypoint.rc" ]
+    command: [ "/usr/local/sftp-server/sbin/sftp-client-shell" ]
+    volumes:
+      - type: volume
+        source: testdata
+        target: /mnt
+      - type: bind
+        read_only: "true"
+        source: ${LOCAL_SECRETS}
+        target: ${SECRETS_VOL}
+      - type: tmpfs
+        target: /tmp
+    environment:
+      SFTP_CLIENT: 1
+      SERVICE: client
+      RUN_ENV: dev
+      SFTP_SERVER: server
+      SFTP_DATA: /mnt
+      INTERACTIVE: 1
+      ENTRYPOINT_DEBUG: 0
+    networks:
+      - sftp
+
+```
+
+Note that the `PACKAGE`, `SERVICE`, and `RUN_ENV` environment variables are
+used by `SWEET` scripts as directory components to collect secrets and
+configuration files, so it is important that they are set correctly; `PACKAGE`
+is set automatically by `SWEET`; `SERVICE` should generally match the name of a
+`docker-compose` service; `RUN_ENV` is by convention `dev`, `test`, or `prod`.
+In addition, the `sftp-server` package uses environment variable
+`CLIENT_PACKAGE` in the same way; it should match the `PACKAGE` of the package
+using `sftp-server`.
+
+Note that the client service also needs to set some other special environment
+variables: `SFTP_CLIENT` should be 1, `SFTP_SERVER` should be set to the name of
+the `docker-compose` SFTP server service, and `SFTP_DATA` should be `/mnt`.
+
+The last thing to remember about using the `sftp-server` server is that the
+only server-side username for authentication purposes is `sftp`. That is,
+the actual `sftp` command that your client uses to connect to the server
+needs to specify `sftp@<servername>` as the `user@server` argument, regardless
+of the username the client actually runs as.
+
+
+
+
+
 
 
 

@@ -13,7 +13,10 @@ ARG IMAGE_VERSION=snapshot
 ARG BRANCH=main
 ARG PACKAGE_DIR=/usr/local/sftp-server
 ARG LOG_LEVEL=DEBUG3
-ARG SFTP_SERVER_OPTS=-R
+
+# -R makes the server read-only
+#ARG SFTP_SERVER_OPTS=-R
+ARG SFTP_SERVER_OPTS=
 
 #
 # The sshd/sftp server runs as $SFTPUSER:nogroup.
