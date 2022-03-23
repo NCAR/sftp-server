@@ -70,7 +70,7 @@ jobs:
           name: "Push Container"
           command: |
               printenv | sed -n -e 's/DOCKERHUB_PASSWORD=\(.*\)/\1/p' | docker login --username $DOCKERHUB_USERNAME --password-stdin
-              docker push ncar/sftp-server
+              docker push --all-tags ncar/sftp-server
 
       - run:
           name: "Merge and Push Wiki Documentation"
