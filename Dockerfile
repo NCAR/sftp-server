@@ -108,8 +108,4 @@ ENTRYPOINT [ "/usr/local/sweet/sbin/sweet-entrypoint.sh", "--source=/usr/local/s
 
 EXPOSE 22
 
-#VOLUME $SFTP_DATA
-#VOLUME $SECRETS_VOL
-#VOLUME $SFTP_DATA
-
 CMD [ "/usr/sbin/sshd", "-D", "-e" ]
