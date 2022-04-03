@@ -1,9 +1,11 @@
 #!/bin/sh
 PROG=ssh-keysync
 DESC="Generate SSH keys for client/server containers"
-USAGE1="$PROG [-h|--help]"
+USAGE1="$PROG -c|--client=name"
+USAGE2="$PROG -h|--help"
 USAGE="Usage:
-    $USAGE1"
+    $USAGE1
+    $USAGE2"
 SERVER_USERS="sftp sshd"
 HELP_TEXT="
         This script will generate SSH keypairs for either the server or client
@@ -21,17 +23,26 @@ HELP_TEXT="
         with the expectation that the volume mounted to /mnt will
         be used subsequently as \$SECRETS_VOL in other containers.
 
-        If the -h|--help option is given, the script will display help
-        text and quit.
+        The following flags are supported:
 
+        -c|--client=name
+            Create user keypairs with names of the form \"<name>-id_<type>\",
+            where <name> is the given name and <type> is one of the supported
+            keytypes. By convention, <name> should be a username. If this
+            option is not included, the username of the executing user is used.
+
+        -h|--help
+             Disply help text and quit.
 "
-
-MODE=sync
-
-case $1 in
-    -h|--help)
-        cat <<EOF
-NAME
+EXECUSER=`id -un 2>/dev/null` # can run with numeric uid set to "non-user"
+CLIENT_NAME=
+while [ $# != 0 ] ; do
+    arg="$1"
+    shift
+    case $arg in
+        -h|--help)
+            cat <<EOF
+NAME            
         $PROG - $DESC
 
 SYNOPSIS
@@ -40,8 +51,24 @@ SYNOPSIS
 
 DESCRIPTION$HELP_TEXT
 EOF
-        exit 0 ;;
-esac
+            return 1 ;;
+
+        --client=*)
+            CLIENT_NAME=`expr "${arg}" : '--client=\(.*\)'` ;;
+
+        -c|--client)
+            CLIENT_NAME="$1"
+            shift ;;
+
+        -*)
+            echo "$PROG: invalid option: $arg" >&2
+            echo "$USAGE" >&2
+            return 1 ;;
+    esac
+done
+if [ ":${CLIENT_NAME}" = ":" ] ; then
+    CLIENT_NAME=${EXECUSER}
+fi
 
 SCRIPTDIR=`cd \`dirname $0\`; pwd`
 SWEETDIR=`cd ${SCRIPTDIR}/../../sweet ; pwd`
@@ -108,8 +135,9 @@ else
     rm -f ${AUTH_KEYS} || exit 1
 
     echo "${role}: Create keys in ${KEY_DIR}"
-    ssh-key-init --client=${EXECUSER} --auth-keys=${AUTH_KEYS} ${KEY_DIR}
+    ssh-key-init --client=${CLIENT_NAME} --auth-keys=${AUTH_KEYS} ${KEY_DIR}
 
     echo "${role}: Done"
 fi
+
 

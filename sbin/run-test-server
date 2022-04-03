@@ -1,15 +1,16 @@
 #!/bin/sh
 PROG=run-test-server
 DESC="Start a test SFTP server container with temporary keys"
-USAGE1="$PROG [-u|--user=user:grp] [-s|--server=svcont] [-n|--network=network]
-                 [-i|--image=clientimage]"
+USAGE1="$PROG [-u|--user=user:grp] [-l|--login=name] [-s|--server=svcont]
+                 [-n|--network=network] [-i|--image=clientimage]"
 USAGE2="$PROG [-h|--help]"
 USAGE="Usage:
     $USAGE1
     $USAGE2"
 
 DEFAULT_CONT=testsftp
-DEFAULT_USER=sweetuser:sftp
+DEFAULT_CLIENT=sweetuser
+DEFAULT_USER=${DEFAULT_CLIENT}:sftp
 
 HELP_TEXT="
         Configure and start a test SFTP container with generated server- and
@@ -39,7 +40,11 @@ HELP_TEXT="
 
         -u|--user=user:grp
             If given, the username:groupname or uid:gid that the client will
-            use. Default is $DEFAULT_USER.
+            run as. Default is $DEFAULT_USER.
+
+        -l|--login=name
+            If given, the name the client will log in as; this is part of the
+            name of eack the client keypair. Default is $DEFAULT_CLIENT.
 
         -s|--server=svcont
             The name to assign to the SFTP server container; if not given,
@@ -68,6 +73,7 @@ HELP_TEXT="
 
 SFTP_CONT=$DEFAULT_CONT
 USER_ARG=$DEFAULT_USER
+CLIENT_NAME=$DEFAULT_CLIENT
 NETWORK=
 SFTP_PORT=2222
 CLIENT_IMAGE=ncar/sftp-server
@@ -209,7 +215,7 @@ createKeyPairsUnderMnt () {
        -e "RUN_ENV=test" \
        --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh \
        ${CLIENT_IMAGE} \
-       /usr/local/sftp-server/sbin/ssh-keysync || return 1
+       /usr/local/sftp-server/sbin/ssh-keysync -c ${CLIENT_NAME} || return 1
 
     echo "Creating server keys as sftp:sftp"
     docker run --rm \
@@ -252,7 +258,7 @@ DESCRIPTION$HELP_TEXT
 EOF
                 return 1 ;;
 
-            -[usniw]?*)
+            -[ulsniw]?*)
                 opt=`expr "${arg}" : '\(-.\).*'`
                 rest=`expr "${arg}" : '-.\(.*\)'`
                 set : ${opt} "${rest}" "$@"
@@ -266,6 +272,10 @@ EOF
             
             -u|--user)
                 USER_ARG="$1"
+                shift ;;
+            
+            -l|--login)
+                CLIENT_NAME="$1"
                 shift ;;
             
             -s|--server)
