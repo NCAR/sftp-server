@@ -29,7 +29,7 @@ jobs:
       - run:
           name: "Run tests"
           command: |
-              ./tbin/runtests.sh
+              ./tbin/run-all-tests
 
       - run:
           name: "Verify Doc Generation"
@@ -62,9 +62,7 @@ jobs:
       - run:
           name: "Run tests"
           command: |
-              cd sbin
-              ./run-test-server --wait=30
-              ./run-test-client tbin/run-sftp-tests
+              ./tbin/run-all-tests
 
       - run:
           name: "Push Container"
