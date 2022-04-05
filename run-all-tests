@@ -29,6 +29,6 @@ EOF
 esac
 SCRIPTDIR=`cd \`dirname $0\`; pwd`
 
-cd ${SCRIPTDIR}/../sbin
-./run-test-server --wait=30
-./run-test-client --rm tbin/run-sftp-tests
+cd ${SCRIPTDIR}
+sbin/run-test-server --wait=30
+sbin/run-test-client --rm tbin/run-sftp-tests
