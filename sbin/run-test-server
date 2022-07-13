@@ -198,7 +198,7 @@ createStoppedSftpContainer () {
     echo "Initializing volume directories"
     docker run --rm \
            --volumes-from ${container} \
-           debian:buster-slim \
+           debian:bullseye-slim \
            /bin/bash -c 'mkdir -p /var/data /mnt /run/secrets ; chmod 1777 /var/data /mnt'
 }
 
@@ -234,7 +234,7 @@ moveKeyPairsToSecrets () {
     echo "Installing keys"
     docker run --rm \
            --volumes-from ${container} \
-           debian:buster-slim \
+           debian:bullseye-slim \
            /bin/bash -c 'mv /mnt/* /run/secrets'
 }
 
