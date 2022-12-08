@@ -8,6 +8,7 @@ RUN apt-get -y --allow-releaseinfo-change update && \
       rsyslog
 
 ARG PACKAGE=sftp-server
+ARG DOMAIN=ncar.ucar.edu
 ARG IMAGE=ncar/sftp-server
 ARG IMAGE_VERSION=snapshot
 ARG BRANCH=main
