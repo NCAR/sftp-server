@@ -1,6 +1,7 @@
 ARG SWEET_QUALIFIER=:latest
 FROM ncar/sweet${SWEET_QUALIFIER}
 
+USER root
 RUN apt-get -y --allow-releaseinfo-change update && \
     apt-get -y install \
       dnsutils \
