@@ -157,12 +157,12 @@ ls -l ${KEYDIR} >$OUT
 set : `ls -l ${PUBDIR} | grep -v '^total' | wc -l`
 echo pubdir: $2 >>$OUT
 if gotExpectedOutput --retval 0 &&
-   gotExpectedOutput --regex '^-rw------- .* client-id_rsa' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* client-id_rsa.pub' &&
-   gotExpectedOutput --regex '^-rw------- .* client-id_ecdsa' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* client-id_ecdsa.pub' &&
-   gotExpectedOutput --regex '^-rw------- .* client-id_ed25519' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* client-id_ed25519.pub' &&
+   gotExpectedOutput --regex '^-rw-------.* client-id_rsa' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* client-id_rsa.pub' &&
+   gotExpectedOutput --regex '^-rw-------.* client-id_ecdsa' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* client-id_ecdsa.pub' &&
+   gotExpectedOutput --regex '^-rw-------.* client-id_ed25519' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* client-id_ed25519.pub' &&
    gotExpectedOutput --regex '^pubdir: 0'
 then
     SUCCESS
@@ -177,13 +177,13 @@ RUN ${MAKE_SSH_KEY_PARMS} -a ${PUBDIR}/authorized_keys -c client ${KEYDIR}
 ls -l ${KEYDIR} >$OUT
 ls -l ${PUBDIR} >>$OUT
 if gotExpectedOutput --retval 0 &&
-   gotExpectedOutput --regex '^-rw------- .* client-id_rsa' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* client-id_rsa.pub' &&
-   gotExpectedOutput --regex '^-rw------- .* client-id_ecdsa' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* client-id_ecdsa.pub' &&
-   gotExpectedOutput --regex '^-rw------- .* client-id_ed25519' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* client-id_ed25519.pub' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* authorized_keys'
+   gotExpectedOutput --regex '^-rw-------.* client-id_rsa' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* client-id_rsa.pub' &&
+   gotExpectedOutput --regex '^-rw-------.* client-id_ecdsa' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* client-id_ecdsa.pub' &&
+   gotExpectedOutput --regex '^-rw-------.* client-id_ed25519' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* client-id_ed25519.pub' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* authorized_keys'
 then
     SUCCESS
 else
@@ -198,12 +198,12 @@ ls -l ${KEYDIR} >$OUT
 set : `ls -l ${PUBDIR} | grep -v '^total' | wc -l`
 echo pubdir: $2 >>$OUT
 if gotExpectedOutput --retval 0 &&
-   gotExpectedOutput --regex '^-rw------- .* ssh_host_rsa_key' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* ssh_host_rsa_key.pub' &&
-   gotExpectedOutput --regex '^-rw------- .* ssh_host_ecdsa_key' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* ssh_host_ecdsa_key.pub' &&
-   gotExpectedOutput --regex '^-rw------- .* ssh_host_ed25519_key' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* ssh_host_ed25519_key.pub' &&
+   gotExpectedOutput --regex '^-rw-------.* ssh_host_rsa_key' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* ssh_host_rsa_key.pub' &&
+   gotExpectedOutput --regex '^-rw-------.* ssh_host_ecdsa_key' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* ssh_host_ecdsa_key.pub' &&
+   gotExpectedOutput --regex '^-rw-------.* ssh_host_ed25519_key' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* ssh_host_ed25519_key.pub' &&
    gotExpectedOutput --regex '^pubdir: 0'
 then
     SUCCESS
@@ -231,13 +231,13 @@ RUN ${MAKE_SSH_KEY_PARMS} -s -k ${PUBDIR}/known_hosts ${KEYDIR}
 ls -l ${KEYDIR} >$OUT
 ls -l ${PUBDIR} >>$OUT
 if gotExpectedOutput --retval 0 &&
-   gotExpectedOutput --regex '^-rw------- .* ssh_host_rsa_key' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* ssh_host_rsa_key.pub' &&
-   gotExpectedOutput --regex '^-rw------- .* ssh_host_ecdsa_key' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* ssh_host_ecdsa_key.pub' &&
-   gotExpectedOutput --regex '^-rw------- .* ssh_host_ed25519_key' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* ssh_host_ed25519_key.pub' &&
-   gotExpectedOutput --regex '^-rw-r--r-- .* known_hosts'
+   gotExpectedOutput --regex '^-rw-------.* ssh_host_rsa_key' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* ssh_host_rsa_key.pub' &&
+   gotExpectedOutput --regex '^-rw-------.* ssh_host_ecdsa_key' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* ssh_host_ecdsa_key.pub' &&
+   gotExpectedOutput --regex '^-rw-------.* ssh_host_ed25519_key' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* ssh_host_ed25519_key.pub' &&
+   gotExpectedOutput --regex '^-rw-r--r--.* known_hosts'
 then
     SUCCESS
 else
