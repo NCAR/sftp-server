@@ -1,5 +1,5 @@
 ARG SWEET_QUALIFIER=:latest
-FROM ghcr.io/sweet${SWEET_QUALIFIER}
+FROM ghcr.io/ncar/sweet${SWEET_QUALIFIER}
 
 USER root
 RUN apt-get -y --allow-releaseinfo-change update && \
