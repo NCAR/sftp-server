@@ -58,5 +58,4 @@ if [ ":${SFTP_SERVER}" != ":" ] ; then
    parmdb set SFTP "${SFTP}"
    parmdb set SFTP_CLIENT "${SFTP_CLIENT}"
 fi
-eval `parmdb list --verbose | grep -v '^#'`
-export `parmdb list`
+eval `parmdb list --env`

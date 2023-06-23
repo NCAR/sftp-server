@@ -80,6 +80,7 @@ CLIENT_IMAGE=ncar/sftp-server
 CLIENT_PACKAGE=
 WAIT=
 TMPLOG=/tmp/run-test-server.$$.log
+:>${TMPLOG}
 ENTRYPOINT_DEBUG=${ENTRYPOINT_DEBUG:-0}
 
 main () {
@@ -133,7 +134,7 @@ verifyClientImage () {
     if [ ":${sftp}" = ":ncar/sftp-server" ] ; then
         return "sftp-server"
     fi
-    package=`docker run --rm --entrypoint /bin/cat ${image} /etc/parmdb-init/PACKAGE 2>/dev/null`
+    package=`docker run --rm --entrypoint /bin/cat ${image} /usr/local/sweet-build/parmdb-init/PACKAGE 2>/dev/null`
     if [ ":${package}" = ":" ] ; then
         echo "$PROG: client image is not based on ncar/sweet" >&2
         exit 1

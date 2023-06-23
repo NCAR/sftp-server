@@ -1,5 +1,5 @@
 ARG SWEET_QUALIFIER=:latest
-FROM ncar/sweet${SWEET_QUALIFIER}
+FROM ghcr.io/sweet${SWEET_QUALIFIER}
 
 USER root
 RUN apt-get -y --allow-releaseinfo-change update && \
@@ -10,7 +10,7 @@ RUN apt-get -y --allow-releaseinfo-change update && \
 
 ARG PACKAGE=sftp-server
 ARG DOMAIN=ncar.ucar.edu
-ARG IMAGE=ncar/sftp-server
+ARG IMAGE=ghcr.io/ncar/sftp-server
 ARG IMAGE_VERSION=snapshot
 ARG BRANCH=main
 ARG PACKAGE_DIR=/usr/local/sftp-server
@@ -28,13 +28,15 @@ ARG SFTPUSERID=901
 ARG SFTPGROUP=sftp
 ARG SFTPGROUPID=901
 
-ENV SFTPUSER=${SFTPUSER} \
+ENV PACKAGE=${PACKAGE} \
+    PACKAGE_DIR=${PACKAGE_DIR} \
+    LOG_LEVEL=${LOG_LEVEL} \
+    SFTPUSER=${SFTPUSER} \
     SFTPUSERID=${SFTPUSERID} \
     SFTPGROUP=${SFTPGROUP} \
     SFTPGROUPID=${SFTPGROUPID} \
     SFTP_DATA=/mnt \
-    NOGROUPID=65534 \
-    LOG_LEVEL=${LOG_LEVEL}
+    NOGROUPID=65534
 
 #
 # SFTP_DATA is the directory served via sftp. Its user:group is
@@ -52,7 +54,9 @@ COPY Intro.md Testing-Support.md gendoc-src ${PACKAGE_DIR}/
 
 RUN set -e ; \
     make-local-links ${PACKAGE_DIR} /usr/local ; \
-    sweet-build-init $SFTPUSERID ; \
+    sweet-build-init $SFTPUSERID:$SFTPGROUPID ; \
+    . /usr/local/sweet-build/global.rc ; \
+    chmod 775 ${PARM_DB} ${PARM_DB_INIT} ; \
     echo "/bin/false" >> /etc/shells ; \
     addgroup --gid ${SFTPGROUPID} ${SFTPGROUP} ; \
     adduser --disabled-password \
@@ -98,7 +102,7 @@ RUN set -e ; \
     mv /etc/rsyslog.conf.new /etc/rsyslog.conf
     
 RUN cd $PACKAGE_DIR ; \
-    /usr/local/sweet/sbin/gendoc -v >gendoc/.log 2>&1 ; \
+    /usr/local/sweet/bin/gendoc -v >gendoc/.log 2>&1 ; \
     chown -R $SFTPUSER:$SFTPGROUP gendoc
 
 

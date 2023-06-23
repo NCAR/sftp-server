@@ -10,10 +10,10 @@ jobs:
 
     steps:
       - checkout
-
+  
       - setup_remote_docker:
           version: 20.10.14
-
+          
       - run:
           name: "Build container"
           command: |
@@ -36,7 +36,7 @@ jobs:
           name: "Verify Doc Generation"
           command: |
               CIRCLE_TAG=0.0.0
-              docker create --name docgenerator --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server /usr/local/sweet/bin/gendoc -b $CIRCLE_TAG -w /var/data/wiki -v
+              docker create --name docgenerator --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ghcr.io/ncar/sftp-server /usr/local/sweet/bin/gendoc -b $CIRCLE_TAG -w /var/data/wiki -v
               docker start -a docgenerator
 
   push:
@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - checkout
-
+          
       - setup_remote_docker:
           version: 20.10.14
 
@@ -69,7 +69,7 @@ jobs:
       - run:
           name: "Push Container"
           command: |
-              printenv | sed -n -e 's/DOCKERHUB_PASSWORD=\(.*\)/\1/p' | docker login --username $DOCKERHUB_USERNAME --password-stdin
+              echo $GH_TOKEN | docker login ghcr.io -u sweg-ci --password-stdin
               docker push --all-tags ncar/sftp-server
 
       - run:
