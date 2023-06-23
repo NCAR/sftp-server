@@ -28,9 +28,12 @@ ARG SFTPUSERID=901
 ARG SFTPGROUP=sftp
 ARG SFTPGROUPID=901
 
-ENV PACKAGE=${PACKAGE} \
-    PACKAGE_DIR=${PACKAGE_DIR} \
-    LOG_LEVEL=${LOG_LEVEL} \
+ENV PACKAGE=sftp-server \
+    PACKAGE_DIR=/usr/local/sftp-server \
+    IMAGE=ghcr.io/ncar/sftp-server \
+    IMAGE_VERSION=snapshot \
+    BRANCH=main \
+    LOG_LEVEL=DEBUG3 \
     SFTPUSER=${SFTPUSER} \
     SFTPUSERID=${SFTPUSERID} \
     SFTPGROUP=${SFTPGROUP} \
