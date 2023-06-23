@@ -70,7 +70,7 @@ jobs:
           name: "Push Container"
           command: |
               echo $GH_TOKEN | docker login ghcr.io -u sweg-ci --password-stdin
-              docker push --all-tags ncar/sftp-server
+              docker push --all-tags ghcr.io/ncar/sftp-server
 
       - run:
           name: "Merge and Push Wiki Documentation"
@@ -80,7 +80,7 @@ jobs:
               REPO=$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
               export REPO
               git clone https://${GH_TOKEN}@github.com/$REPO.wiki.git $HOME/gendocs
-              docker create --name docgenerator --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ncar/sftp-server gendoc -b $CIRCLE_TAG -w /var/data/wiki -v
+              docker create --name docgenerator --entrypoint /usr/local/sweet/sbin/sweet-entrypoint.sh ghcr.io/ncar/sftp-server gendoc -b $CIRCLE_TAG -w /var/data/wiki -v
               docker cp $HOME/gendocs/. docgenerator:/var/data/wiki
               docker start -a docgenerator
               docker cp docgenerator:/usr/local/sftp-server/gendoc/. $HOME/gendocs
